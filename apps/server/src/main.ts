@@ -1,30 +1,30 @@
-import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import 'dotenv/config';
+
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { validateEnv } from './config/env.validation';
+import { setupSwagger } from './config/swagger.config';
+
+validateEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const configService = app.get(ConfigService);
+
+  app.use(helmet());
 
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGINS', 'http://localhost:8081').split(','),
+    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:8081').split(','),
     credentials: true,
   });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
-  const prefix = configService.get<string>('API_PREFIX', 'api/v1');
+  const prefix = process.env.API_PREFIX ?? 'api/v1';
   app.setGlobalPrefix(prefix, { exclude: ['health'] });
 
-  const port = configService.get<number>('PORT', 3000);
+  setupSwagger(app);
+
+  const port = parseInt(process.env.PORT ?? '3000', 10);
   await app.listen(port);
 }
 

@@ -7,12 +7,14 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "start:debug": "ts-node -r tsconfig-paths/register --inspect src/main.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/database.config.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/database.config.ts",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/config/database.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1014.0",
     "@nestjs/common": "^11.0.0",
-    "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
@@ -26,9 +28,11 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.4",
+    "dotenv": "^17.3.1",
     "firebase-admin": "^13.7.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
+    "joi": "^18.0.2",
     "otplib": "^13.4.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
