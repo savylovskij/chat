@@ -31,3 +31,7 @@ export { UpdateChatDto } from './dto/update-chat.dto';
 export { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 export { Verify2faDto } from './dto/verify-2fa.dto';
 export { VerifyOtpDto } from './dto/verify-otp.dto';
+export { WsDeleteMessageDto } from './dto/ws-delete-message.dto';
+export { WsReactionDto } from './dto/ws-reaction.dto';
+export { WsReadMessageDto } from './dto/ws-read-message.dto';
+export { WsTypingDto } from './dto/ws-typing.dto';

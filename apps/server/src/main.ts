@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { validateEnv } from './config/env.validation';
 import { setupSwagger } from './config/swagger.config';
+import { setupWebSocket } from './config/websocket.config';
 
 validateEnv();
 
@@ -18,6 +19,8 @@ async function bootstrap() {
     origin: (process.env.CORS_ORIGINS ?? 'http://localhost:8081').split(','),
     credentials: true,
   });
+
+  setupWebSocket(app);
 
   const prefix = process.env.API_PREFIX ?? 'api/v1';
   app.setGlobalPrefix(prefix, { exclude: ['health'] });
