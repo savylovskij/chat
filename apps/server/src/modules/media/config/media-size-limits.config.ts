@@ -1,0 +1,5 @@
+export const MEDIA_SIZE_LIMITS = {
+  IMAGE_MAX_SIZE: 10 * 1024 * 1024,
+  VIDEO_MAX_SIZE: 100 * 1024 * 1024,
+  FILE_MAX_SIZE: 50 * 1024 * 1024,
+} as const;

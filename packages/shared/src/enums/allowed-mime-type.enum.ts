@@ -1,0 +1,17 @@
+export enum AllowedMimeType {
+  IMAGE_JPEG = 'image/jpeg',
+  IMAGE_PNG = 'image/png',
+  IMAGE_GIF = 'image/gif',
+  IMAGE_WEBP = 'image/webp',
+  VIDEO_MP4 = 'video/mp4',
+  VIDEO_QUICKTIME = 'video/quicktime',
+  VIDEO_WEBM = 'video/webm',
+  AUDIO_AAC = 'audio/aac',
+  AUDIO_OGG = 'audio/ogg',
+  AUDIO_MP4 = 'audio/mp4',
+  AUDIO_MPEG = 'audio/mpeg',
+  AUDIO_WEBM = 'audio/webm',
+  APPLICATION_PDF = 'application/pdf',
+  APPLICATION_ZIP = 'application/zip',
+  APPLICATION_OCTET_STREAM = 'application/octet-stream',
+}
