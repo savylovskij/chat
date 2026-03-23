@@ -1,0 +1,63 @@
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UploadKeysDto } from '@shared/core';
+
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+
+import { KeysService } from './keys.service';
+
+@ApiTags('Keys')
+@Controller('keys')
+@UseGuards(JwtAuthGuard)
+export class KeysController {
+  constructor(private readonly keysService: KeysService) {}
+
+  @Post('upload')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload identity key, signed pre-key, and one-time pre-keys' })
+  async uploadKeys(
+    @CurrentUser() user: Record<'userId' | 'deviceId', string>,
+    @Body() dto: UploadKeysDto,
+  ) {
+    await this.keysService.uploadKeys(
+      user.userId,
+      user.deviceId,
+      dto.identitiesKey,
+      dto.signedPreKey,
+      dto.preKeys,
+    );
+  }
+
+  @Get('status')
+  @ApiOperation({ summary: 'Get count of available one-time pre-keys' })
+  async getKeyStatus(@CurrentUser() user: Record<'userId' | 'deviceId', string>) {
+    const result = await this.keysService.getKeyStatus(user.userId, user.deviceId);
+    return {
+      data: result,
+    };
+  }
+
+  @Get(':userId')
+  @ApiOperation({ summary: 'Get keys for a user (for establishing E2EE session)' })
+  async getKeys(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Query('deviceId') deviceId?: string,
+  ) {
+    const result = await this.keysService.getKeysForUser(userId, deviceId);
+    return {
+      data: result,
+    };
+  }
+}

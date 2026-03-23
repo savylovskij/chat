@@ -35,3 +35,6 @@ export { WsDeleteMessageDto } from './dto/ws-delete-message.dto';
 export { WsReactionDto } from './dto/ws-reaction.dto';
 export { WsReadMessageDto } from './dto/ws-read-message.dto';
 export { WsTypingDto } from './dto/ws-typing.dto';
+export { PreKeyDto } from './dto/pre-key.dto';
+export { SignedPreKeyDto } from './dto/signed-pre-key.dto';
+export { UploadKeysDto } from './dto/upload-keys.dto';
