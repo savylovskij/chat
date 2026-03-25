@@ -4,8 +4,45 @@ import { MediaMetadata } from '@shared/types/media-metadata.interface';
 import { Message } from '@shared/types/message.interface';
 import { create } from 'zustand';
 
+import { signalManager } from '../crypto/signal-manager';
+import { EncryptedEnvelope } from '../models/encrypted-envelope.interface';
 import { MessageState } from '../models/message-state.interface';
 import { apiClient } from '../services/api-client';
+import { keysService } from '../services/keys.service';
+
+import { useAuthStore } from './auth.store';
+import { useChatStore } from './chat.store';
+
+async function ensureSessionsForRecipients(recipientIds: string[]): Promise<void> {
+  for (const recipientId of recipientIds) {
+    await keysService.ensureSession(recipientId);
+  }
+}
+
+async function encryptContent(recipientIds: string[], content: string): Promise<string> {
+  await ensureSessionsForRecipients(recipientIds);
+  const envelope = await signalManager.encryptMessage(recipientIds, content);
+
+  return JSON.stringify(envelope);
+}
+
+async function decryptContent(
+  senderId: string,
+  encryptedContent: string,
+  currentUserId: string,
+): Promise<string> {
+  try {
+    const envelope = JSON.parse(encryptedContent) as EncryptedEnvelope;
+
+    if (envelope.v !== 1 || envelope.keys === undefined) {
+      return encryptedContent;
+    }
+
+    return await signalManager.decryptMessage(senderId, envelope, currentUserId);
+  } catch {
+    return encryptedContent;
+  }
+}
 
 export const useMessageStore = create<MessageState>((set) => ({
   messagesByChat: {},
@@ -19,13 +56,31 @@ export const useMessageStore = create<MessageState>((set) => ({
       `/chats/${chatId}/messages`,
       { params },
     );
+
+    const currentUserId = useAuthStore.getState().user?.id ?? '';
+    const decryptedMessages = await Promise.all(
+      data.map(async (message) => {
+        if (message.encryptedContent !== null && message.encryptedContent !== '') {
+          const decrypted = await decryptContent(
+            message.senderId,
+            message.encryptedContent,
+            currentUserId,
+          );
+
+          return { ...message, encryptedContent: decrypted };
+        }
+
+        return message;
+      }),
+    );
+
     set((state) => ({
       messagesByChat: {
         ...state.messagesByChat,
         [chatId]:
           cursor !== undefined && cursor !== ''
-            ? [...(state.messagesByChat[chatId] ?? []), ...data]
-            : data,
+            ? [...(state.messagesByChat[chatId] ?? []), ...decryptedMessages]
+            : decryptedMessages,
       },
       hasMore: { ...state.hasMore, [chatId]: hasMore },
     }));
@@ -58,14 +113,29 @@ export const useMessageStore = create<MessageState>((set) => ({
 
     set((state) => ({ pendingMessages: [...state.pendingMessages, pendingMessage] }));
 
+    const memberIds = useChatStore.getState().getChatMemberIds(chatId);
+    let encryptedContent: string | undefined;
+
+    if (content !== '' && memberIds.length > 0) {
+      try {
+        encryptedContent = await encryptContent(memberIds, content);
+      } catch {
+        encryptedContent = content;
+      }
+    } else {
+      encryptedContent = content || undefined;
+    }
+
     await apiClient.post('/messages', {
       chatId,
       type,
-      encryptedContent: content || undefined,
+      encryptedContent,
       mediaUrl,
       mediaMetadata,
       clientMessageId,
     });
+
+    void keysService.checkAndReplenishPreKeys();
   },
 
   editMessage: async (messageId: string, content: string) => {
@@ -92,6 +162,38 @@ export const useMessageStore = create<MessageState>((set) => ({
   },
 
   onNewMessage: (chatId: string, message: Message) => {
+    const currentUserId = useAuthStore.getState().user?.id ?? '';
+
+    if (message.senderId === currentUserId && message.encryptedContent !== null) {
+      const state = useMessageStore.getState();
+      const pending = state.pendingMessages.find(
+        (pendingMessage) => pendingMessage.chatId === chatId,
+      );
+
+      if (pending?.encryptedContent !== null && pending?.encryptedContent !== undefined) {
+        message = { ...message, encryptedContent: pending.encryptedContent };
+      }
+    }
+
+    if (
+      message.senderId !== currentUserId &&
+      message.encryptedContent !== null &&
+      message.encryptedContent !== ''
+    ) {
+      void decryptContent(message.senderId, message.encryptedContent, currentUserId).then(
+        (decrypted) => {
+          useMessageStore.setState((state) => {
+            const chatMessages = state.messagesByChat[chatId] ?? [];
+            const updated = chatMessages.map((existing) =>
+              existing.id === message.id ? { ...existing, encryptedContent: decrypted } : existing,
+            );
+
+            return { messagesByChat: { ...state.messagesByChat, [chatId]: updated } };
+          });
+        },
+      );
+    }
+
     set((state) => ({
       messagesByChat: {
         ...state.messagesByChat,

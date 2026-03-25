@@ -9,9 +9,11 @@ import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { MessageBubble } from '../../components/message-bubble';
 import { MessageInput } from '../../components/message-input';
 import { TypingIndicator } from '../../components/typing-indicator';
+import { signalManager } from '../../crypto/signal-manager';
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { MediaAsset } from '../../models/media-asset.interface';
 import { UploadProgress } from '../../models/upload-progress.interface';
+import { keysService } from '../../services/keys.service';
 import { mediaService } from '../../services/media.service';
 import { useAuthStore } from '../../stores/auth.store';
 import { useChatStore } from '../../stores/chat.store';
@@ -27,6 +29,7 @@ export default function ChatRoomScreen() {
   const chat = useChatStore((state) => state.chats.find((item) => item.id === chatId));
 
   const setActiveChat = useChatStore((state) => state.setActiveChat);
+  const getChatMemberIds = useChatStore((state) => state.getChatMemberIds);
 
   const { messagesByChat, hasMore, fetchMessages, sendMessage } = useMessageStore();
 
@@ -82,9 +85,38 @@ export default function ChatRoomScreen() {
       setUploadProgress(0);
 
       try {
-        const fileUrl = await mediaService.uploadMediaAsset(asset, (progress: UploadProgress) => {
-          setUploadProgress(progress.percentage);
-        });
+        const memberIds = getChatMemberIds(chatId);
+        let fileUrl: string;
+        let encryptedPayload: string = '';
+
+        if (memberIds.length > 0) {
+          const encryptedFile = await signalManager.encryptFile(asset.uri);
+
+          fileUrl = await mediaService.uploadMediaAsset(
+            { ...asset, uri: encryptedFile.encryptedUri },
+            (progress: UploadProgress) => {
+              setUploadProgress(progress.percentage);
+            },
+          );
+
+          for (const memberId of memberIds) {
+            await keysService.ensureSession(memberId);
+          }
+
+          const envelope = await signalManager.encryptMediaPayload(
+            memberIds,
+            encryptedFile.key,
+            encryptedFile.iv,
+            encryptedFile.hash,
+            '',
+          );
+
+          encryptedPayload = JSON.stringify(envelope);
+        } else {
+          fileUrl = await mediaService.uploadMediaAsset(asset, (progress: UploadProgress) => {
+            setUploadProgress(progress.percentage);
+          });
+        }
 
         const metadata: MediaMetadata = {
           size: asset.fileSize,
@@ -95,13 +127,13 @@ export default function ChatRoomScreen() {
           duration: asset.duration,
         };
 
-        void sendMessage(chatId, '', asset.messageType, fileUrl, metadata);
+        void sendMessage(chatId, encryptedPayload, asset.messageType, fileUrl, metadata);
       } finally {
         setUploadProgress(null);
         setUploadFileName(null);
       }
     },
-    [chatId, sendMessage],
+    [chatId, sendMessage, getChatMemberIds],
   );
 
   const renderItem = useCallback(

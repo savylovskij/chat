@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { MessageType } from '../enums';
 
@@ -16,6 +16,10 @@ export class SendMessageDto {
   @IsOptional()
   @IsString()
   mediaUrl?: string;
+
+  @IsOptional()
+  @IsObject()
+  mediaMetadata?: Record<string, unknown>;
 
   @IsOptional()
   @IsUUID()

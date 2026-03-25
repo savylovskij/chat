@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UploadKeysDto } from '@shared/core';
+import { ReplenishPreKeysDto, UploadKeysDto } from '@shared/core';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -38,6 +38,16 @@ export class KeysController {
       dto.signedPreKey,
       dto.preKeys,
     );
+  }
+
+  @Post('replenish')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload additional one-time pre-keys' })
+  async replenishPreKeys(
+    @CurrentUser() user: Record<'userId' | 'deviceId', string>,
+    @Body() dto: ReplenishPreKeysDto,
+  ) {
+    await this.keysService.replenishPreKeys(user.userId, user.deviceId, dto.preKeys);
   }
 
   @Get('status')

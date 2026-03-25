@@ -6,29 +6,58 @@ import { create } from 'zustand';
 import { ChatState } from '../models/chat-state.interface';
 import { apiClient } from '../services/api-client';
 
-export const useChatStore = create<ChatState>((set) => ({
+interface ChatWithMembers extends Chat {
+  members?: Array<{ userId: string }>;
+}
+
+function extractMembersByChat(chats: ChatWithMembers[]): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+
+  for (const chat of chats) {
+    if (chat.members !== undefined) {
+      result[chat.id] = chat.members.map((member) => member.userId);
+    }
+  }
+
+  return result;
+}
+
+export const useChatStore = create<ChatState>((set, get) => ({
   chats: [],
   activeChatId: null,
   isLoading: false,
   blockedUsers: [],
+  membersByChat: {},
 
   fetchChats: async () => {
     set({ isLoading: true });
 
     try {
-      const chats = await apiClient.get<Chat[]>('/chats');
-      set({ chats });
+      const chats = await apiClient.get<ChatWithMembers[]>('/chats');
+      const membersByChat = extractMembersByChat(chats);
+      set((state) => ({
+        chats,
+        membersByChat: { ...state.membersByChat, ...membersByChat },
+      }));
     } finally {
       set({ isLoading: false });
     }
   },
 
   createChat: async (type: ChatType, memberIds: string[], name?: string) => {
-    const chat = await apiClient.post<Chat>('/chats', { type, memberIds, name });
+    const chat = await apiClient.post<ChatWithMembers>('/chats', { type, memberIds, name });
+    const members = extractMembersByChat([chat]);
 
-    set((state) => ({ chats: [chat, ...state.chats] }));
+    set((state) => ({
+      chats: [chat, ...state.chats],
+      membersByChat: { ...state.membersByChat, ...members },
+    }));
 
     return chat;
+  },
+
+  getChatMemberIds: (chatId: string) => {
+    return get().membersByChat[chatId] ?? [];
   },
 
   setActiveChat: (chatId: string | null) => {

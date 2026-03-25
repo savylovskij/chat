@@ -132,6 +132,25 @@ export class KeysService {
     return result;
   }
 
+  async replenishPreKeys(
+    userId: string,
+    deviceId: string,
+    preKeys: { keyId: number; publicKey: string }[],
+  ): Promise<void> {
+    const preKeyEntities = preKeys.map((preKey) =>
+      this.prekeyRepository.create({
+        userId,
+        deviceId,
+        keyId: preKey.keyId,
+        publicKey: Buffer.from(preKey.publicKey, 'base64'),
+        isSigned: false,
+        signature: null,
+      }),
+    );
+
+    await this.prekeyRepository.save(preKeyEntities);
+  }
+
   async getKeyStatus(userId: string, deviceId: string): Promise<{ availablePreKeys: number }> {
     const availablePreKeys = await this.prekeyRepository.count({
       where: {

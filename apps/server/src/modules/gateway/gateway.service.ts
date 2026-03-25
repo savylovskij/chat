@@ -123,6 +123,7 @@ export class GatewayService {
       type: payload.type,
       encryptedContent: payload.encryptedContent ?? null,
       mediaUrl: payload.mediaUrl ?? null,
+      mediaMetadata: payload.mediaMetadata ?? null,
       replyToId: payload.replyToId ?? null,
     });
 
@@ -140,6 +141,7 @@ export class GatewayService {
       type: savedMessage.type,
       encryptedContent: savedMessage.encryptedContent,
       mediaUrl: savedMessage.mediaUrl,
+      mediaMetadata: savedMessage.mediaMetadata,
       replyToId: savedMessage.replyToId,
       clientMessageId: payload.clientMessageId,
       createdAt: savedMessage.createdAt.toISOString(),

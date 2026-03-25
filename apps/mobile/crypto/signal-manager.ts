@@ -1,117 +1,260 @@
-import { File as ExpoFile, Paths } from 'expo-file-system';
-import * as SecureStore from 'expo-secure-store';
+import {
+  KeyHelper,
+  SessionBuilder,
+  SessionCipher,
+  SignalProtocolAddress,
+} from 'libsignal-protocol-typescript';
 
+import { EncryptedEnvelope } from '../models/encrypted-envelope.interface';
 import { EncryptedFileResult } from '../models/encrypted-file-result.interface';
+import { EncryptedKey } from '../models/encrypted-key.interface';
 import { KeyBundle } from '../models/key-bundle.interface';
+import { MediaEncryptionPayload } from '../models/media-encryption-payload.interface';
 import { PreKeyBundle } from '../models/pre-key-bundle.interface';
 
-const IDENTITY_KEY = 'signal_identity_key';
-const REGISTRATION_ID_KEY = 'signal_registration_id';
+import {
+  decryptAesGcm,
+  decryptFile as decryptFileAes,
+  encryptAesGcm,
+  encryptFile as encryptFileAes,
+  generateAesKey,
+  generateIv,
+} from './crypto-utils';
+import { SignalProtocolStore, arrayBufferToBase64, base64ToArrayBuffer } from './signal-store';
+
+const DEVICE_ID = 1;
 
 class SignalManager {
+  private store = new SignalProtocolStore();
   private initialized = false;
 
   async initialize(): Promise<KeyBundle> {
-    const existingKey = await SecureStore.getItemAsync(IDENTITY_KEY);
-    if (existingKey !== null) {
+    const existingKeyPair = await this.store.getIdentityKeyPair();
+    const existingRegId = await this.store.getLocalRegistrationId();
+
+    if (existingKeyPair !== undefined && existingRegId !== undefined) {
       this.initialized = true;
-      return JSON.parse(existingKey) as KeyBundle;
+
+      return this.buildKeyBundleFromStore(existingRegId);
     }
 
-    const registrationId = Math.floor(Math.random() * 16383) + 1;
-    const keyBundle: KeyBundle = {
-      registrationId,
-      identityKey: this.generateBase64Key(),
-      signedPreKey: {
-        keyId: 1,
-        publicKey: this.generateBase64Key(),
-        signature: this.generateBase64Key(),
-      },
-      preKeys: this.generatePreKeys(100),
-    };
+    const identityKeyPair = await KeyHelper.generateIdentityKeyPair();
+    const registrationId = KeyHelper.generateRegistrationId();
 
-    await SecureStore.setItemAsync(IDENTITY_KEY, JSON.stringify(keyBundle));
-    await SecureStore.setItemAsync(REGISTRATION_ID_KEY, String(registrationId));
+    await this.store.saveIdentityKeyPair(identityKeyPair);
+    await this.store.saveLocalRegistrationId(registrationId);
+
+    const signedPreKey = await KeyHelper.generateSignedPreKey(identityKeyPair, 1);
+    await this.store.storeSignedPreKey(signedPreKey.keyId, signedPreKey.keyPair);
+
+    const preKeys: Array<{ keyId: number; publicKey: string }> = [];
+
+    for (let keyId = 1; keyId <= 100; keyId++) {
+      const preKey = await KeyHelper.generatePreKey(keyId);
+      await this.store.storePreKey(preKey.keyId, preKey.keyPair);
+      preKeys.push({
+        keyId: preKey.keyId,
+        publicKey: arrayBufferToBase64(preKey.keyPair.pubKey),
+      });
+    }
+
     this.initialized = true;
-    return keyBundle;
+
+    return {
+      registrationId,
+      identityKey: arrayBufferToBase64(identityKeyPair.pubKey),
+      signedPreKey: {
+        keyId: signedPreKey.keyId,
+        publicKey: arrayBufferToBase64(signedPreKey.keyPair.pubKey),
+        signature: arrayBufferToBase64(signedPreKey.signature),
+      },
+      preKeys,
+    };
   }
 
   async createSession(userId: string, preKeyBundle: PreKeyBundle): Promise<void> {
     this.ensureInitialized();
-    const sessionKey = `signal_session_${userId}`;
-    await SecureStore.setItemAsync(sessionKey, JSON.stringify(preKeyBundle));
+
+    const address = new SignalProtocolAddress(userId, DEVICE_ID);
+    const sessionBuilder = new SessionBuilder(this.store, address);
+
+    await sessionBuilder.processPreKey({
+      identityKey: base64ToArrayBuffer(preKeyBundle.identityKey),
+      registrationId: preKeyBundle.registrationId,
+      signedPreKey: {
+        keyId: preKeyBundle.signedPreKey.keyId,
+        publicKey: base64ToArrayBuffer(preKeyBundle.signedPreKey.publicKey),
+        signature: base64ToArrayBuffer(preKeyBundle.signedPreKey.signature),
+      },
+      preKey:
+        preKeyBundle.preKey !== undefined && preKeyBundle.preKey.publicKey !== ''
+          ? {
+              keyId: preKeyBundle.preKey.keyId,
+              publicKey: base64ToArrayBuffer(preKeyBundle.preKey.publicKey),
+            }
+          : undefined,
+    });
   }
 
-  async encrypt(userId: string, plaintext: string): Promise<string> {
+  async hasSession(userId: string): Promise<boolean> {
+    const address = new SignalProtocolAddress(userId, DEVICE_ID);
+
+    return this.store.hasSession(address.toString());
+  }
+
+  async encryptMessage(recipientIds: string[], plaintext: string): Promise<EncryptedEnvelope> {
     this.ensureInitialized();
-    const sessionKey = `signal_session_${userId}`;
-    const session = await SecureStore.getItemAsync(sessionKey);
-    if (session === null) {
-      throw new Error(`No session established with user ${userId}`);
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- CryptoKey is safe
+    const aesKey = await generateAesKey();
+    const iv = generateIv();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- CryptoKey type is safe
+    const encryptedBody = await encryptAesGcm(plaintext, aesKey, iv);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- CryptoKey type is safe
+    const rawKey = await crypto.subtle.exportKey('raw', aesKey);
+    const keys: Record<string, EncryptedKey> = {};
+
+    for (const recipientId of recipientIds) {
+      const address = new SignalProtocolAddress(recipientId, DEVICE_ID);
+      const cipher = new SessionCipher(this.store, address);
+      const encrypted = await cipher.encrypt(rawKey);
+
+      keys[recipientId] = {
+        type: encrypted.type,
+        body: encrypted.body ?? '',
+      };
     }
 
-    // Placeholder: in production, use libsignal-protocol-typescript for actual Signal encryption
-
-    return btoa(plaintext);
+    return {
+      v: 1,
+      body: encryptedBody,
+      iv: arrayBufferToBase64(iv.buffer as ArrayBuffer),
+      keys,
+    };
   }
 
-  async decrypt(userId: string, ciphertext: string): Promise<string> {
+  async decryptMessage(
+    senderId: string,
+    envelope: EncryptedEnvelope,
+    currentUserId: string,
+  ): Promise<string> {
     this.ensureInitialized();
-    const sessionKey = `signal_session_${userId}`;
-    const session = await SecureStore.getItemAsync(sessionKey);
-    if (session === null) {
-      throw new Error(`No session established with user ${userId}`);
+
+    const myKey = envelope.keys[currentUserId];
+
+    if (myKey === undefined) {
+      throw new Error('No encryption key found for current user');
     }
 
-    // Placeholder: in production, use libsignal-protocol-typescript for actual Signal decryption
+    const address = new SignalProtocolAddress(senderId, DEVICE_ID);
+    const cipher = new SessionCipher(this.store, address);
 
-    return atob(ciphertext);
+    let rawKey: ArrayBuffer;
+
+    if (myKey.type === 3) {
+      rawKey = await cipher.decryptPreKeyWhisperMessage(myKey.body, 'binary');
+    } else {
+      rawKey = await cipher.decryptWhisperMessage(myKey.body, 'binary');
+    }
+
+    const aesKey = await crypto.subtle.importKey(
+      'raw',
+      rawKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['decrypt'],
+    );
+
+    const iv = new Uint8Array(base64ToArrayBuffer(envelope.iv));
+
+    return decryptAesGcm(envelope.body, aesKey, iv);
   }
 
-  encryptFile(fileUri: string): EncryptedFileResult {
-    this.ensureInitialized();
+  async encryptMediaPayload(
+    recipientIds: string[],
+    fileKey: string,
+    fileIv: string,
+    fileHash: string,
+    caption: string,
+  ): Promise<EncryptedEnvelope> {
+    const payload: MediaEncryptionPayload = {
+      text: caption,
+      fileKey,
+      fileIv,
+      fileHash,
+    };
 
-    const key = this.generateBase64Key();
-    const iv = this.generateBase64Key();
-
-    // Placeholder: in production, use AES-256-GCM encryption
-    const source = new ExpoFile(fileUri);
-    const destination = new ExpoFile(Paths.cache, `encrypted_${Date.now()}`);
-    source.copy(destination);
-    const hash = this.generateBase64Key();
-
-    return { encryptedUri: destination.uri, key, iv, hash };
+    return this.encryptMessage(recipientIds, JSON.stringify(payload));
   }
 
-  decryptFile(encryptedUri: string, _key: string, _iv: string): string {
+  async decryptMediaPayload(
+    senderId: string,
+    envelope: EncryptedEnvelope,
+    currentUserId: string,
+  ): Promise<MediaEncryptionPayload> {
+    const json = await this.decryptMessage(senderId, envelope, currentUserId);
+
+    return JSON.parse(json) as MediaEncryptionPayload;
+  }
+
+  encryptFile(fileUri: string): Promise<EncryptedFileResult> {
     this.ensureInitialized();
 
-    // Placeholder: in production, use AES-256-GCM decryption
-    const source = new ExpoFile(encryptedUri);
-    const destination = new ExpoFile(Paths.cache, `decrypted_${Date.now()}`);
-    source.copy(destination);
+    return encryptFileAes(fileUri);
+  }
 
-    return destination.uri;
+  decryptFile(encryptedUri: string, key: string, iv: string): Promise<string> {
+    this.ensureInitialized();
+
+    return decryptFileAes(encryptedUri, key, iv);
+  }
+
+  async generateAndGetPreKeys(
+    startKeyId: number,
+    count: number,
+  ): Promise<Array<{ keyId: number; publicKey: string }>> {
+    this.ensureInitialized();
+
+    const preKeys: Array<{ keyId: number; publicKey: string }> = [];
+
+    for (let index = 0; index < count; index++) {
+      const keyId = startKeyId + index;
+      const preKey = await KeyHelper.generatePreKey(keyId);
+      await this.store.storePreKey(preKey.keyId, preKey.keyPair);
+      preKeys.push({
+        keyId: preKey.keyId,
+        publicKey: arrayBufferToBase64(preKey.keyPair.pubKey),
+      });
+    }
+
+    return preKeys;
+  }
+
+  private async buildKeyBundleFromStore(registrationId: number): Promise<KeyBundle> {
+    const identityKeyPair = await this.store.getIdentityKeyPair();
+
+    if (identityKeyPair === undefined) {
+      throw new Error('Identity key pair not found in store');
+    }
+
+    const signedPreKey = await this.store.loadSignedPreKey(1);
+
+    return {
+      registrationId,
+      identityKey: arrayBufferToBase64(identityKeyPair.pubKey),
+      signedPreKey: {
+        keyId: 1,
+        publicKey: signedPreKey !== undefined ? arrayBufferToBase64(signedPreKey.pubKey) : '',
+        signature: '',
+      },
+      preKeys: [],
+    };
   }
 
   private ensureInitialized(): void {
     if (!this.initialized) {
       throw new Error('SignalManager not initialized. Call initialize() first.');
     }
-  }
-
-  private generateBase64Key(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return btoa(String.fromCharCode(...array));
-  }
-
-  private generatePreKeys(count: number): Array<{ keyId: number; publicKey: string }> {
-    const preKeys: Array<{ keyId: number; publicKey: string }> = [];
-    for (let keyId = 1; keyId <= count; keyId++) {
-      preKeys.push({ keyId, publicKey: this.generateBase64Key() });
-    }
-    return preKeys;
   }
 }
 

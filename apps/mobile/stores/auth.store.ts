@@ -4,6 +4,7 @@ import { create } from 'zustand';
 
 import { AuthState } from '../models/auth-state.interface';
 import { apiClient } from '../services/api-client';
+import { keysService } from '../services/keys.service';
 
 const TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -62,6 +63,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         requires2FA: false,
         tempToken: null,
       });
+
+      try {
+        await keysService.initializeAndUploadKeys();
+      } catch {
+        // Keys will be uploaded on next session restore
+      }
     }
   },
 
@@ -84,6 +91,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       requires2FA: false,
       tempToken: null,
     });
+
+    try {
+      await keysService.initializeAndUploadKeys();
+    } catch {
+      // Keys will be uploaded on next session restore
+    }
   },
 
   logout: async () => {
@@ -151,6 +164,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = await apiClient.get<User>('/users/me');
 
       set({ user, isAuthenticated: true });
+    }
+
+    try {
+      await keysService.initializeAndUploadKeys();
+    } catch {
+      // Non-critical — E2EE will initialize on next attempt
     }
   },
 }));
