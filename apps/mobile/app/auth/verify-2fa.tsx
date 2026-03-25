@@ -1,0 +1,107 @@
+import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { useThemeColors } from '../../hooks/use-theme-colors';
+import { useAuthStore } from '../../stores/auth.store';
+
+export default function Verify2FAScreen() {
+  const colors = useThemeColors();
+  const router = useRouter();
+
+  const verify2FA = useAuthStore((state) => state.verify2FA);
+
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+
+  const handleVerify = useCallback(async () => {
+    try {
+      setError('');
+      await verify2FA(code);
+      router.replace('/chats');
+    } catch (verifyError) {
+      setError(verifyError instanceof Error ? verifyError.message : '2FA verification failed');
+    }
+  }, [code, verify2FA, router]);
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>Two-Factor Authentication</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        Enter the code from your authenticator app
+      </Text>
+
+      <TextInput
+        style={[
+          styles.input,
+          {
+            color: colors.textPrimary,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+          },
+        ]}
+        placeholder="000000"
+        placeholderTextColor={colors.textSecondary}
+        value={code}
+        onChangeText={setCode}
+        keyboardType="number-pad"
+        maxLength={6}
+        autoFocus
+      />
+
+      {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
+
+      <Pressable
+        style={[styles.button, { backgroundColor: colors.accent }]}
+        onPress={() => void handleVerify()}
+      >
+        <Text style={styles.buttonText}>Verify</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  input: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 24,
+    textAlign: 'center',
+    letterSpacing: 8,
+    marginBottom: 16,
+  },
+  error: {
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  button: {
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

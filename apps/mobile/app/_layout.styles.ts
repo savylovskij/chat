@@ -1,7 +1,7 @@
-import { Colors } from '../constants/colors';
+import { DarkTheme } from '../constants/colors';
 
 export const screenOptions = {
-  headerStyle: { backgroundColor: Colors.background },
-  headerTintColor: Colors.textPrimary,
-  contentStyle: { backgroundColor: Colors.background },
+  headerStyle: { backgroundColor: DarkTheme.background },
+  headerTintColor: DarkTheme.textPrimary,
+  contentStyle: { backgroundColor: DarkTheme.background },
 } as const;

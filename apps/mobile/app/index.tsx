@@ -1,30 +1,13 @@
-import { ChatType } from '@shared/enums';
-import { StyleSheet, Text, View } from 'react-native';
+import { Redirect } from 'expo-router';
 
-export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Secure Messenger</Text>
-      <Text style={styles.subtitle}>Chat types: {Object.values(ChatType).join(', ')}</Text>
-    </View>
-  );
+import { useAuthStore } from '../stores/auth.store';
+
+export default function IndexScreen() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  if (isAuthenticated) {
+    return <Redirect href="/chats" />;
+  }
+
+  return <Redirect href="/auth/login" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1C1C22',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2DD48C',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#E8E8EC',
-    marginTop: 8,
-  },
-});
