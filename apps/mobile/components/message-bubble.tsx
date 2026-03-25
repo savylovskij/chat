@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { memo, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
@@ -16,6 +17,7 @@ export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
 }: MessageBubbleProps) {
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [videoPlayerVisible, setVideoPlayerVisible] = useState(false);
@@ -30,15 +32,17 @@ export const MessageBubble = memo(function MessageBubble({
       await File.downloadFileAsync(message.mediaUrl, destination);
       await Sharing.shareAsync(destination.uri);
     } catch {
-      Alert.alert('Error', 'Failed to download file');
+      Alert.alert(t('common.error'), t('common.downloadFailed'));
     }
-  }, [message.mediaUrl, message.mediaMetadata?.fileName]);
+  }, [message.mediaUrl, message.mediaMetadata?.fileName, t]);
 
   if (message.deletedAt !== null) {
     return (
       <View style={[styles.container, isOwnMessage ? styles.ownContainer : styles.otherContainer]}>
         <View style={[styles.bubble, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.deletedText, { color: colors.textSecondary }]}>Message deleted</Text>
+          <Text style={[styles.deletedText, { color: colors.textSecondary }]}>
+            {t('chat.messageDeleted')}
+          </Text>
         </View>
       </View>
     );

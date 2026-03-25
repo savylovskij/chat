@@ -2,6 +2,7 @@ import { Chat } from '@shared/types/chat.interface';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ChatListItem } from '../../components/chat-list-item';
@@ -9,6 +10,7 @@ import { useThemeColors } from '../../hooks/use-theme-colors';
 import { useChatStore } from '../../stores/chat.store';
 
 export default function ChatListScreen() {
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const router = useRouter();
   const { chats, isLoading, fetchChats } = useChatStore();
@@ -41,7 +43,7 @@ export default function ChatListScreen() {
       <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
-          placeholder="Search chats..."
+          placeholder={t('chat.searchChats')}
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -57,7 +59,9 @@ export default function ChatListScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No chats yet</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {t('chat.noChats')}
+            </Text>
           </View>
         }
       />

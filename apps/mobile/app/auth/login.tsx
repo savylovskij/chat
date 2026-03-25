@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { useAuthStore } from '../../stores/auth.store';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const router = useRouter();
 
@@ -20,15 +22,15 @@ export default function LoginScreen() {
       await login(phone);
       router.push('/auth/verify-otp');
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'Login failed');
+      setError(loginError instanceof Error ? loginError.message : t('auth.loginFailed'));
     }
-  }, [phone, login, router]);
+  }, [phone, login, router, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Secure Messenger</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{t('auth.appName')}</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Enter your phone number to continue
+        {t('auth.phonePrompt')}
       </Text>
 
       <TextInput
@@ -40,7 +42,7 @@ export default function LoginScreen() {
             backgroundColor: colors.surface,
           },
         ]}
-        placeholder="+380..."
+        placeholder={t('auth.phonePlaceholder')}
         placeholderTextColor={colors.textSecondary}
         value={phone}
         onChangeText={setPhone}
@@ -54,7 +56,7 @@ export default function LoginScreen() {
         style={[styles.button, { backgroundColor: colors.accent }]}
         onPress={() => void handleLogin()}
       >
-        <Text style={styles.buttonText}>Continue</Text>
+        <Text style={styles.buttonText}>{t('auth.continue')}</Text>
       </Pressable>
     </View>
   );

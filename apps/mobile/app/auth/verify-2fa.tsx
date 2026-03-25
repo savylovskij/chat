@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { useAuthStore } from '../../stores/auth.store';
 
 export default function Verify2FAScreen() {
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const router = useRouter();
 
@@ -20,16 +22,14 @@ export default function Verify2FAScreen() {
       await verify2FA(code);
       router.replace('/chats');
     } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : '2FA verification failed');
+      setError(verifyError instanceof Error ? verifyError.message : t('auth.2fa.failed'));
     }
-  }, [code, verify2FA, router]);
+  }, [code, verify2FA, router, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Two-Factor Authentication</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Enter the code from your authenticator app
-      </Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{t('auth.2fa.title')}</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('auth.2fa.prompt')}</Text>
 
       <TextInput
         style={[
@@ -40,7 +40,7 @@ export default function Verify2FAScreen() {
             backgroundColor: colors.surface,
           },
         ]}
-        placeholder="000000"
+        placeholder={t('auth.otpPlaceholder')}
         placeholderTextColor={colors.textSecondary}
         value={code}
         onChangeText={setCode}
@@ -55,7 +55,7 @@ export default function Verify2FAScreen() {
         style={[styles.button, { backgroundColor: colors.accent }]}
         onPress={() => void handleVerify()}
       >
-        <Text style={styles.buttonText}>Verify</Text>
+        <Text style={styles.buttonText}>{t('auth.verify')}</Text>
       </Pressable>
     </View>
   );

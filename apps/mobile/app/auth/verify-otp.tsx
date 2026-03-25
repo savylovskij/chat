@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { useAuthStore } from '../../stores/auth.store';
 
 export default function VerifyOtpScreen() {
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const router = useRouter();
 
@@ -26,16 +28,14 @@ export default function VerifyOtpScreen() {
         router.replace('/chats');
       }
     } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : 'Verification failed');
+      setError(verifyError instanceof Error ? verifyError.message : t('auth.verificationFailed'));
     }
-  }, [code, verifyOtp, router]);
+  }, [code, verifyOtp, router, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Enter OTP Code</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        We sent a verification code to your phone
-      </Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{t('auth.otpTitle')}</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('auth.otpSent')}</Text>
 
       <TextInput
         style={[
@@ -46,7 +46,7 @@ export default function VerifyOtpScreen() {
             backgroundColor: colors.surface,
           },
         ]}
-        placeholder="000000"
+        placeholder={t('auth.otpPlaceholder')}
         placeholderTextColor={colors.textSecondary}
         value={code}
         onChangeText={setCode}
@@ -61,7 +61,7 @@ export default function VerifyOtpScreen() {
         style={[styles.button, { backgroundColor: colors.accent }]}
         onPress={() => void handleVerify()}
       >
-        <Text style={styles.buttonText}>Verify</Text>
+        <Text style={styles.buttonText}>{t('auth.verify')}</Text>
       </Pressable>
     </View>
   );

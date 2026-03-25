@@ -2,6 +2,7 @@ import { MessageType } from '@shared/enums/message-type.enum';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
@@ -14,6 +15,7 @@ export const MediaPicker = memo(function MediaPicker({
   onSelect,
   onClose,
 }: MediaPickerProps) {
+  const { t } = useTranslation();
   const colors = useThemeColors();
 
   const handleImageLibrary = useCallback(async () => {
@@ -112,19 +114,23 @@ export const MediaPicker = memo(function MediaPicker({
             onPress={() => void handleCamera()}
           >
             <Text style={styles.optionIcon}>{'\u{1F4F7}'}</Text>
-            <Text style={[styles.optionText, { color: colors.textPrimary }]}>Camera</Text>
+            <Text style={[styles.optionText, { color: colors.textPrimary }]}>
+              {t('chat.camera')}
+            </Text>
           </Pressable>
 
           <Pressable style={styles.option} onPress={() => void handleDocument()}>
             <Text style={styles.optionIcon}>{'\u{1F4C4}'}</Text>
-            <Text style={[styles.optionText, { color: colors.textPrimary }]}>Document</Text>
+            <Text style={[styles.optionText, { color: colors.textPrimary }]}>
+              {t('chat.document')}
+            </Text>
           </Pressable>
 
           <Pressable
             style={[styles.cancelButton, { backgroundColor: colors.background }]}
             onPress={onClose}
           >
-            <Text style={[styles.cancelText, { color: colors.accent }]}>Cancel</Text>
+            <Text style={[styles.cancelText, { color: colors.accent }]}>{t('common.cancel')}</Text>
           </Pressable>
         </View>
       </Pressable>

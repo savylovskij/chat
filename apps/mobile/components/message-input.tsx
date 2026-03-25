@@ -1,4 +1,5 @@
 import { memo, useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
@@ -17,6 +18,7 @@ export const MessageInput = memo(function MessageInput({
   uploadProgress,
   uploadFileName,
 }: MessageInputProps) {
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const [text, setText] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -97,7 +99,7 @@ export const MessageInput = memo(function MessageInput({
             styles.input,
             { color: colors.textPrimary, backgroundColor: colors.inputBackground },
           ]}
-          placeholder="Message..."
+          placeholder={t('chat.typeMessage')}
           placeholderTextColor={colors.textSecondary}
           value={text}
           onChangeText={handleChangeText}
