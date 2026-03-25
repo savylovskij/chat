@@ -1,5 +1,6 @@
 import { DeleteMessageMode } from '@shared/enums/delete-message-mode.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
+import { MediaMetadata } from '@shared/types/media-metadata.interface';
 import { Message } from '@shared/types/message.interface';
 import { create } from 'zustand';
 
@@ -30,7 +31,13 @@ export const useMessageStore = create<MessageState>((set) => ({
     }));
   },
 
-  sendMessage: async (chatId: string, content: string, type: MessageType, mediaUrl?: string) => {
+  sendMessage: async (
+    chatId: string,
+    content: string,
+    type: MessageType,
+    mediaUrl?: string,
+    mediaMetadata?: MediaMetadata,
+  ) => {
     const clientMessageId = crypto.randomUUID();
     const pendingMessage: Message = {
       id: clientMessageId,
@@ -38,9 +45,9 @@ export const useMessageStore = create<MessageState>((set) => ({
       senderId: '',
       type,
       weight: 'normal' as Message['weight'],
-      encryptedContent: content,
+      encryptedContent: content || null,
       mediaUrl: mediaUrl ?? null,
-      mediaMetadata: null,
+      mediaMetadata: mediaMetadata ?? null,
       replyToId: null,
       timer: null,
       isEdited: false,
@@ -54,8 +61,9 @@ export const useMessageStore = create<MessageState>((set) => ({
     await apiClient.post('/messages', {
       chatId,
       type,
-      encryptedContent: content,
+      encryptedContent: content || undefined,
       mediaUrl,
+      mediaMetadata,
       clientMessageId,
     });
   },

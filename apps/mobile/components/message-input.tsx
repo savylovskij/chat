@@ -1,14 +1,25 @@
-import * as ImagePicker from 'expo-image-picker';
 import { memo, useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
+import { MediaAsset } from '../models/media-asset.interface';
 import { MessageInputProps } from '../models/message-input-props.interface';
 import { socketService } from '../services/socket.service';
 
-export const MessageInput = memo(function MessageInput({ onSend, chatId }: MessageInputProps) {
+import { MediaPicker } from './media-picker';
+import { UploadProgress } from './upload-progress';
+import { VoiceRecorder } from './voice-recorder';
+
+export const MessageInput = memo(function MessageInput({
+  onSend,
+  onSendMedia,
+  chatId,
+  uploadProgress,
+  uploadFileName,
+}: MessageInputProps) {
   const colors = useThemeColors();
   const [text, setText] = useState('');
+  const [pickerVisible, setPickerVisible] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
 
@@ -48,52 +59,69 @@ export const MessageInput = memo(function MessageInput({ onSend, chatId }: Messa
     }
   }, [text, onSend, chatId]);
 
-  const handleAttach = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
-      quality: 0.8,
-    });
+  const handleMediaSelect = useCallback(
+    (asset: MediaAsset) => {
+      onSendMedia(asset);
+    },
+    [onSendMedia],
+  );
 
-    if (!result.canceled && result.assets.length > 0) {
-      // Upload and send media message — handled by parent
-    }
-  }, []);
+  const handleVoiceRecordComplete = useCallback(
+    (asset: MediaAsset) => {
+      onSendMedia(asset);
+    },
+    [onSendMedia],
+  );
 
   const hasText = text.trim().length > 0;
+  const isUploading = uploadProgress !== null;
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
-    >
-      <Pressable style={styles.attachButton} onPress={() => void handleAttach()}>
-        <Text style={[styles.attachIcon, { color: colors.accent }]}>+</Text>
-      </Pressable>
-
-      <TextInput
-        style={[
-          styles.input,
-          { color: colors.textPrimary, backgroundColor: colors.inputBackground },
-        ]}
-        placeholder="Message..."
-        placeholderTextColor={colors.textSecondary}
-        value={text}
-        onChangeText={handleChangeText}
-        multiline
-        maxLength={4096}
-      />
-
-      {hasText ? (
-        <Pressable
-          style={[styles.sendButton, { backgroundColor: colors.accent }]}
-          onPress={handleSend}
-        >
-          <Text style={styles.sendIcon}>{'\u2191'}</Text>
-        </Pressable>
-      ) : (
-        <Pressable style={styles.micButton}>
-          <Text style={[styles.micIcon, { color: colors.accent }]}>{'\u{1F3A4}'}</Text>
-        </Pressable>
+    <View>
+      {isUploading && uploadFileName !== null && (
+        <UploadProgress percentage={uploadProgress} fileName={uploadFileName} />
       )}
+
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.surface, borderTopColor: colors.border },
+        ]}
+      >
+        <Pressable style={styles.attachButton} onPress={() => setPickerVisible(true)}>
+          <Text style={[styles.attachIcon, { color: colors.accent }]}>+</Text>
+        </Pressable>
+
+        <TextInput
+          style={[
+            styles.input,
+            { color: colors.textPrimary, backgroundColor: colors.inputBackground },
+          ]}
+          placeholder="Message..."
+          placeholderTextColor={colors.textSecondary}
+          value={text}
+          onChangeText={handleChangeText}
+          multiline
+          maxLength={4096}
+        />
+
+        {hasText ? (
+          <Pressable
+            style={[styles.sendButton, { backgroundColor: colors.accent }]}
+            onPress={handleSend}
+          >
+            <Text style={styles.sendIcon}>{'\u2191'}</Text>
+          </Pressable>
+        ) : (
+          <VoiceRecorder onRecordComplete={handleVoiceRecordComplete} />
+        )}
+      </View>
+
+      <MediaPicker
+        visible={pickerVisible}
+        onSelect={handleMediaSelect}
+        onClose={() => setPickerVisible(false)}
+      />
     </View>
   );
 });
@@ -138,15 +166,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
-  },
-  micButton: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
-  },
-  micIcon: {
-    fontSize: 20,
   },
 });

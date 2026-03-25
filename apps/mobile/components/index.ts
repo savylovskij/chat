@@ -1,7 +1,13 @@
 export { Avatar } from './avatar';
 export { ChatListItem } from './chat-list-item';
+export { ImageViewer } from './image-viewer';
+export { MediaPicker } from './media-picker';
 export { MessageBubble } from './message-bubble';
 export { MessageInput } from './message-input';
 export { ReactionBadge } from './reaction-badge';
 export { ReactionPicker } from './reaction-picker';
 export { TypingIndicator } from './typing-indicator';
+export { UploadProgress } from './upload-progress';
+export { VideoPlayer } from './video-player';
+export { VoicePlayer } from './voice-player';
+export { VoiceRecorder } from './voice-recorder';

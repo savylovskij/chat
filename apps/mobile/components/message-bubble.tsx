@@ -1,16 +1,38 @@
 import { MessageType } from '@shared/enums/message-type.enum';
 import { format } from 'date-fns';
-import { memo } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { memo, useCallback, useState } from 'react';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { MessageBubbleProps } from '../models/message-bubble-props.interface';
+
+import { ImageViewer } from './image-viewer';
+import { VideoPlayer } from './video-player';
+import { VoicePlayer } from './voice-player';
 
 export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
 }: MessageBubbleProps) {
   const colors = useThemeColors();
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [videoPlayerVisible, setVideoPlayerVisible] = useState(false);
+
+  const handleFileDownload = useCallback(async () => {
+    if (message.mediaUrl === null || message.mediaUrl === '') return;
+
+    const fileName = message.mediaMetadata?.fileName ?? 'download';
+
+    try {
+      const destination = new File(Paths.cache, fileName);
+      await File.downloadFileAsync(message.mediaUrl, destination);
+      await Sharing.shareAsync(destination.uri);
+    } catch {
+      Alert.alert('Error', 'Failed to download file');
+    }
+  }, [message.mediaUrl, message.mediaMetadata?.fileName]);
 
   if (message.deletedAt !== null) {
     return (
@@ -31,17 +53,27 @@ export const MessageBubble = memo(function MessageBubble({
         return (
           <View>
             {message.mediaUrl !== null && (
-              <Image
-                source={{ uri: message.mediaUrl }}
-                style={styles.mediaImage}
-                resizeMode="cover"
-              />
+              <Pressable onPress={() => setImageViewerVisible(true)}>
+                <Image
+                  source={{ uri: message.mediaUrl }}
+                  style={styles.mediaImage}
+                  resizeMode="cover"
+                />
+              </Pressable>
             )}
 
             {message.encryptedContent !== null && (
               <Text style={[styles.messageText, { color: colors.textPrimary }]}>
                 {message.encryptedContent}
               </Text>
+            )}
+
+            {message.mediaUrl !== null && (
+              <ImageViewer
+                uri={message.mediaUrl}
+                visible={imageViewerVisible}
+                onClose={() => setImageViewerVisible(false)}
+              />
             )}
           </View>
         );
@@ -50,48 +82,57 @@ export const MessageBubble = memo(function MessageBubble({
         return (
           <View>
             {message.mediaUrl !== null && (
-              <View style={styles.videoContainer}>
-                <Image
-                  source={{ uri: message.mediaUrl }}
-                  style={styles.mediaImage}
-                  resizeMode="cover"
-                />
-                <View style={styles.playButton}>
-                  <Text style={styles.playIcon}>{'\u25B6'}</Text>
+              <Pressable onPress={() => setVideoPlayerVisible(true)}>
+                <View style={styles.videoContainer}>
+                  <Image
+                    source={{ uri: message.mediaUrl }}
+                    style={styles.mediaImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.playButton}>
+                    <Text style={styles.playIcon}>{'\u25B6'}</Text>
+                  </View>
                 </View>
-              </View>
+              </Pressable>
+            )}
+
+            {message.mediaUrl !== null && (
+              <VideoPlayer
+                uri={message.mediaUrl}
+                visible={videoPlayerVisible}
+                onClose={() => setVideoPlayerVisible(false)}
+              />
             )}
           </View>
         );
 
       case MessageType.FILE:
         return (
-          <View style={styles.fileContainer}>
-            <Text style={styles.fileIcon}>{'\u{1F4CE}'}</Text>
-            <View style={styles.fileInfo}>
-              <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>
-                {message.mediaMetadata?.fileName ?? 'File'}
-              </Text>
-              <Text style={[styles.fileSize, { color: colors.textSecondary }]}>
-                {message.mediaMetadata?.size !== undefined && message.mediaMetadata.size !== 0
-                  ? formatFileSize(message.mediaMetadata.size)
-                  : ''}
-              </Text>
+          <Pressable onPress={() => void handleFileDownload()}>
+            <View style={styles.fileContainer}>
+              <Text style={styles.fileIcon}>{'\u{1F4CE}'}</Text>
+              <View style={styles.fileInfo}>
+                <Text style={[styles.fileName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {message.mediaMetadata?.fileName ?? 'File'}
+                </Text>
+                <Text style={[styles.fileSize, { color: colors.textSecondary }]}>
+                  {message.mediaMetadata?.size !== undefined && message.mediaMetadata.size !== 0
+                    ? formatFileSize(message.mediaMetadata.size)
+                    : ''}
+                </Text>
+              </View>
+              <Text style={[styles.downloadIcon, { color: colors.accent }]}>{'\u2B07'}</Text>
             </View>
-          </View>
+          </Pressable>
         );
 
       case MessageType.VOICE:
-        return (
-          <View style={styles.voiceContainer}>
-            <Pressable style={[styles.voicePlayButton, { backgroundColor: colors.accent }]}>
-              <Text style={styles.voicePlayIcon}>{'\u25B6'}</Text>
-            </Pressable>
-            <View style={[styles.waveform, { backgroundColor: colors.textSecondary }]} />
-            <Text style={[styles.voiceDuration, { color: colors.textSecondary }]}>
-              {message.mediaMetadata?.duration !== undefined && message.mediaMetadata.duration !== 0
-                ? formatDuration(message.mediaMetadata.duration)
-                : '0:00'}
+        return message.mediaUrl !== null ? (
+          <VoicePlayer uri={message.mediaUrl} duration={message.mediaMetadata?.duration ?? 0} />
+        ) : (
+          <View style={styles.voicePlaceholder}>
+            <Text style={[styles.voicePlaceholderText, { color: colors.textSecondary }]}>
+              Voice message
             </Text>
           </View>
         );
@@ -131,13 +172,6 @@ function formatFileSize(bytes: number): string {
   }
 
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-
-  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({
@@ -223,29 +257,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-  voiceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  downloadIcon: {
+    fontSize: 16,
+  },
+  voicePlaceholder: {
     minWidth: 180,
+    paddingVertical: 8,
   },
-  voicePlayButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  voicePlayIcon: {
-    color: '#FFFFFF',
+  voicePlaceholderText: {
     fontSize: 14,
-  },
-  waveform: {
-    flex: 1,
-    height: 2,
-    borderRadius: 1,
-  },
-  voiceDuration: {
-    fontSize: 12,
+    fontStyle: 'italic',
   },
 });

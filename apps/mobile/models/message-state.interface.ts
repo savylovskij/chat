@@ -1,5 +1,6 @@
 import { DeleteMessageMode } from '@shared/enums/delete-message-mode.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
+import { MediaMetadata } from '@shared/types/media-metadata.interface';
 import { Message } from '@shared/types/message.interface';
 
 export interface MessageState {
@@ -13,6 +14,7 @@ export interface MessageState {
     content: string,
     type: MessageType,
     mediaUrl?: string,
+    mediaMetadata?: MediaMetadata,
   ) => Promise<void>;
   editMessage: (messageId: string, content: string) => Promise<void>;
   deleteMessage: (messageId: string, mode: DeleteMessageMode) => Promise<void>;
