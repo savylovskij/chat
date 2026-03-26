@@ -12,8 +12,19 @@ interface FloatingBubblesProps {
   onChatPress: (chatId: string) => void;
 }
 
-const MIN_BUBBLE_SIZE = 40;
+const MIN_BUBBLE_SIZE = 36;
+const DEFAULT_BUBBLE_SIZE = 40;
 const MAX_BUBBLE_SIZE = 56;
+const UNREAD_SCALE_CAP = 20;
+
+function getBubbleSize(isActive: boolean, unreadCount: number): number {
+  if (isActive) return MAX_BUBBLE_SIZE;
+  if (unreadCount <= 0) return MIN_BUBBLE_SIZE;
+
+  const ratio = Math.min(unreadCount, UNREAD_SCALE_CAP) / UNREAD_SCALE_CAP;
+
+  return Math.round(DEFAULT_BUBBLE_SIZE + ratio * (MAX_BUBBLE_SIZE - DEFAULT_BUBBLE_SIZE));
+}
 
 export const FloatingBubbles = memo(function FloatingBubbles({
   chats,
@@ -48,7 +59,8 @@ export const FloatingBubbles = memo(function FloatingBubbles({
       >
         {sortedChats.map((chat) => {
           const isActive = chat.id === activeChatId;
-          const size = isActive ? MAX_BUBBLE_SIZE : MIN_BUBBLE_SIZE;
+          const unreadCount = (chat as Chat & { unreadCount?: number }).unreadCount ?? 0;
+          const size = getBubbleSize(isActive, unreadCount);
 
           return (
             <Pressable

@@ -2,6 +2,7 @@ import { MessageStatus } from '@shared/enums/message-status.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
 import { MessageWeight } from '@shared/enums/message-weight.enum';
 import { format } from 'date-fns';
+import { BlurView } from 'expo-blur';
 import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
@@ -29,6 +30,7 @@ import { useThemeColors } from '../hooks/use-theme-colors';
 import { MessageBubbleProps } from '../models/message-bubble-props.interface';
 import { getChatAccentColor } from '../utils/chat-accent-color';
 import { formatFileSize } from '../utils/format-file-size';
+import { getPositionBorderRadius } from '../utils/message-position-radius';
 
 import { ImageViewer } from './image-viewer';
 import { ReactionBadge } from './reaction-badge';
@@ -64,16 +66,22 @@ function getWeightTextStyle(weight: MessageWeight): TextStyle {
 
 function MessageStatusIcon({
   status,
-  color,
+  accentColor,
+  mutedColor,
 }: {
   status: MessageStatus;
-  color: string;
+  accentColor: string;
+  mutedColor: string;
 }): React.ReactElement | null {
   switch (status) {
     case MessageStatus.PENDING:
-      return <Text style={[styles.statusIcon, { color }]}>{'\u{1F551}'}</Text>;
+      return <Text style={[styles.statusIcon, { color: mutedColor }]}>{'\u{1F551}'}</Text>;
     case MessageStatus.SENT:
-      return <Text style={[styles.statusIcon, { color }]}>{'\u2713'}</Text>;
+      return <Text style={[styles.statusIcon, { color: mutedColor }]}>{'\u2713'}</Text>;
+    case MessageStatus.DELIVERED:
+      return <Text style={[styles.statusIcon, { color: mutedColor }]}>{'\u2713\u2713'}</Text>;
+    case MessageStatus.READ:
+      return <Text style={[styles.statusIcon, { color: accentColor }]}>{'\u2713\u2713'}</Text>;
     case MessageStatus.FAILED:
       return <Text style={[styles.statusIcon, { color: '#FF3B30' }]}>{'\u0021'}</Text>;
     default:
@@ -85,6 +93,7 @@ export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
   chatId,
+  position,
   status,
   reactions,
   onRetry,
@@ -96,8 +105,35 @@ export const MessageBubble = memo(function MessageBubble({
   const colors = useThemeColors();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [videoPlayerVisible, setVideoPlayerVisible] = useState(false);
+  const [timerProgress, setTimerProgress] = useState(1);
+  const [timerExpired, setTimerExpired] = useState(false);
   const bubbleRef = useRef<View>(null);
   const swipeableRef = useRef<Swipeable>(null);
+
+  const hasTimer = message.timer !== null && message.timer > 0;
+
+  useEffect(() => {
+    if (!hasTimer) return;
+
+    const startTime = new Date(message.createdAt).getTime();
+    const duration = message.timer! * 1000;
+    const endTime = startTime + duration;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, (endTime - now) / duration);
+      setTimerProgress(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setTimerExpired(true);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [hasTimer, message.createdAt, message.timer]);
+
+  const timerBlurIntensity = hasTimer ? Math.round((1 - timerProgress) * 80) : 0;
 
   const handleFileDownload = useCallback(async () => {
     if (message.mediaUrl === null || message.mediaUrl === '') return;
@@ -184,6 +220,7 @@ export const MessageBubble = memo(function MessageBubble({
 
   const weightStyle = getWeightBubbleStyle(message.weight);
   const weightTextStyle = getWeightTextStyle(message.weight);
+  const positionRadius = getPositionBorderRadius(position, isOwnMessage);
 
   const renderContent = () => {
     switch (message.type) {
@@ -327,11 +364,26 @@ export const MessageBubble = memo(function MessageBubble({
             ref={bubbleRef}
             style={[
               styles.bubble,
-              { backgroundColor: bubbleColor, opacity: bubbleOpacity },
+              {
+                backgroundColor: bubbleColor,
+                opacity: timerExpired ? 0 : bubbleOpacity,
+                transform: [{ scale: timerExpired ? 0.8 : 1 }],
+              },
+              positionRadius,
               weightStyle,
             ]}
           >
-            {renderContent()}
+            <View style={styles.timerContentWrapper}>
+              {renderContent()}
+
+              {hasTimer && timerBlurIntensity > 0 && (
+                <BlurView
+                  intensity={timerBlurIntensity}
+                  tint="dark"
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
+            </View>
 
             <View style={styles.metaRow}>
               {message.isEdited && (
@@ -339,12 +391,16 @@ export const MessageBubble = memo(function MessageBubble({
               )}
               <Text style={[styles.time, { color: colors.textSecondary }]}>{time}</Text>
               {isOwnMessage && status !== undefined && (
-                <MessageStatusIcon status={status} color={colors.textSecondary} />
+                <MessageStatusIcon
+                  status={status}
+                  accentColor={colors.accent}
+                  mutedColor={colors.textSecondary}
+                />
               )}
             </View>
 
-            {message.timer !== null && message.timer > 0 && (
-              <TimerProgress timerSeconds={message.timer} createdAt={message.createdAt} />
+            {hasTimer && (
+              <TimerProgress timerSeconds={message.timer!} createdAt={message.createdAt} />
             )}
           </View>
         </Pressable>
@@ -377,10 +433,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    overflow: 'hidden',
+  },
+  timerContentWrapper: {
+    position: 'relative',
   },
   messageText: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 18,
   },
   deletedText: {
     fontSize: 14,

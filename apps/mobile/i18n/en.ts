@@ -70,6 +70,8 @@ export default {
   'menu.forward': 'Forward',
 
   // Chat actions
+  'chat.mute': 'Mute',
+  'chat.archive': 'Archive',
   'chat.clearHistory': 'Clear history',
   'chat.clearHistoryConfirm': 'Clear all chat history? This only affects you.',
   'chat.deleteChat': 'Delete chat',

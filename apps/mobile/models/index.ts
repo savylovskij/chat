@@ -23,6 +23,7 @@ export type { MediaPlaceholderProps } from './media-placeholder-props.interface'
 export type { MediaType } from './media-type.type';
 export type { MediaPickerProps } from './media-picker-props.interface';
 export type { MessageBubbleProps } from './message-bubble-props.interface';
+export type { MessagePosition } from './message-position.type';
 export type { MessageContextMenuProps } from './message-context-menu-props.interface';
 export type { MessageInputProps } from './message-input-props.interface';
 export type { MessageState, PendingMessage } from './message-state.interface';

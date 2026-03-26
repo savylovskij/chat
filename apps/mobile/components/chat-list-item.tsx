@@ -14,6 +14,8 @@ export const ChatListItem = memo(function ChatListItem({
   chat,
   onPress,
   onSwipeAction,
+  onMute,
+  onArchive,
 }: ChatListItemProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
@@ -31,19 +33,33 @@ export const ChatListItem = memo(function ChatListItem({
     dragX: Animated.AnimatedInterpolation<number>,
   ) => {
     const translateX = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [0, 80],
+      inputRange: [-160, 0],
+      outputRange: [0, 160],
       extrapolate: 'clamp',
     });
 
     return (
-      <Animated.View
-        style={[
-          styles.swipeAction,
-          { backgroundColor: colors.accent, transform: [{ translateX }] },
-        ]}
-      >
-        <Text style={styles.swipeActionText}>{t('settings.notifications')}</Text>
+      <Animated.View style={[styles.swipeActionsRow, { transform: [{ translateX }] }]}>
+        <Pressable
+          style={[styles.swipeAction, { backgroundColor: '#FFD60A' }]}
+          onPress={() => {
+            swipeableRef.current?.close();
+            onMute?.();
+          }}
+        >
+          <Text style={styles.swipeActionIcon}>{'\u{1F515}'}</Text>
+          <Text style={styles.swipeActionText}>{t('chat.mute')}</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.swipeAction, { backgroundColor: colors.accent }]}
+          onPress={() => {
+            swipeableRef.current?.close();
+            onArchive?.();
+          }}
+        >
+          <Text style={styles.swipeActionIcon}>{'\u{1F4E6}'}</Text>
+          <Text style={styles.swipeActionText}>{t('chat.archive')}</Text>
+        </Pressable>
       </Animated.View>
     );
   };
@@ -142,14 +158,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
   },
+  swipeActionsRow: {
+    flexDirection: 'row',
+  },
   swipeAction: {
     width: 80,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  swipeActionIcon: {
+    fontSize: 18,
+    marginBottom: 2,
+  },
   swipeActionText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
 });

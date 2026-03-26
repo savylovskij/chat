@@ -4,4 +4,6 @@ export interface ChatListItemProps {
   chat: Chat;
   onPress: () => void;
   onSwipeAction?: () => void;
+  onMute?: () => void;
+  onArchive?: () => void;
 }

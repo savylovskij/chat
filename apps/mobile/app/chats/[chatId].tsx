@@ -30,6 +30,7 @@ import { useAuthStore } from '../../stores/auth.store';
 import { useChatStore } from '../../stores/chat.store';
 import { useMessageStore } from '../../stores/message.store';
 import { usePresenceStore } from '../../stores/presence.store';
+import { getMessagePosition } from '../../utils/get-message-position';
 
 interface DisplayMessage extends Message {
   status?: MessageStatus;
@@ -356,6 +357,8 @@ export default function ChatRoomScreen() {
         }
       }
 
+      const messagePosition = getMessagePosition(messages, index);
+
       return (
         <View style={timeGapPadding > 0 ? { paddingBottom: timeGapPadding } : undefined}>
           {showBreathingLine && (
@@ -365,6 +368,7 @@ export default function ChatRoomScreen() {
             message={item}
             isOwnMessage={item.senderId === currentUser?.id}
             chatId={chatId ?? ''}
+            position={messagePosition}
             status={item.status}
             reactions={messageReactions}
             onRetry={
