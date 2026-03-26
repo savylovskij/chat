@@ -426,7 +426,6 @@ export default function ChatRoomScreen() {
         data={messages}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        estimatedItemSize={72}
         drawDistance={300}
         getItemType={getItemType}
         inverted

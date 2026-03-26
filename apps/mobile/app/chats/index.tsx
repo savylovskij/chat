@@ -77,7 +77,6 @@ export default function ChatListScreen() {
         data={filteredChats}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        estimatedItemSize={76}
         drawDistance={250}
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={() => void fetchChats()} />
