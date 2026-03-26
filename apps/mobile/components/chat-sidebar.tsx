@@ -1,22 +1,23 @@
 import { Chat } from '@shared/types/chat.interface';
 import { FlashList } from '@shopify/flash-list';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { ChatListItem } from '../../components/chat-list-item';
-import { useResponsiveLayout } from '../../hooks/use-responsive-layout';
-import { useThemeColors } from '../../hooks/use-theme-colors';
-import { useChatStore } from '../../stores/chat.store';
+import { useThemeColors } from '../hooks/use-theme-colors';
+import { ChatSidebarProps } from '../models/chat-sidebar-props.interface';
+import { useChatStore } from '../stores/chat.store';
 
-export default function ChatListScreen() {
+import { ChatListItem } from './chat-list-item';
+
+export const ChatSidebar = memo(function ChatSidebar({
+  onChatPress,
+  activeChatId,
+}: ChatSidebarProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
-  const router = useRouter();
   const { chats, isLoading, fetchChats } = useChatStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const { isMobile } = useResponsiveLayout();
 
   useEffect(() => {
     void fetchChats();
@@ -28,27 +29,23 @@ export default function ChatListScreen() {
 
   const handleChatPress = useCallback(
     (chat: Chat) => {
-      router.push(`/chats/${chat.id}`);
+      onChatPress(chat.id);
     },
-    [router],
+    [onChatPress],
   );
 
   const renderItem = useCallback(
     ({ item }: { item: Chat }) => (
-      <ChatListItem chat={item} onPress={() => handleChatPress(item)} />
+      <View style={[item.id === activeChatId && { backgroundColor: colors.surface }]}>
+        <ChatListItem chat={item} onPress={() => handleChatPress(item)} />
+      </View>
     ),
-    [handleChatPress],
+    [handleChatPress, activeChatId, colors.surface],
   );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.searchContainer,
-          { backgroundColor: colors.surface },
-          isMobile && styles.searchContainerMobile,
-        ]}
-      >
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
           placeholder={t('chat.searchChats')}
@@ -76,13 +73,13 @@ export default function ChatListScreen() {
 
       <Pressable
         style={[styles.fab, { backgroundColor: colors.accent }]}
-        onPress={() => router.push('/chats/new')}
+        onPress={() => onChatPress('new')}
       >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -91,10 +88,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-  },
-  searchContainerMobile: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
   },
   searchInput: {
     height: 40,

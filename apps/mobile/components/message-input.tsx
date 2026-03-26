@@ -1,6 +1,7 @@
+import { BlurView } from 'expo-blur';
 import { memo, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { MediaAsset } from '../models/media-asset.interface';
@@ -78,46 +79,62 @@ export const MessageInput = memo(function MessageInput({
   const hasText = text.trim().length > 0;
   const isUploading = uploadProgress !== null;
 
+  const inputContent = (
+    <>
+      <Pressable style={styles.attachButton} onPress={() => setPickerVisible(true)}>
+        <Text style={[styles.attachIcon, { color: colors.accent }]}>+</Text>
+      </Pressable>
+
+      <TextInput
+        style={[
+          styles.input,
+          { color: colors.textPrimary, backgroundColor: colors.inputBackground },
+        ]}
+        placeholder={t('chat.typeMessage')}
+        placeholderTextColor={colors.textSecondary}
+        value={text}
+        onChangeText={handleChangeText}
+        multiline
+        maxLength={4096}
+      />
+
+      {hasText ? (
+        <Pressable
+          style={[styles.sendButton, { backgroundColor: colors.accent }]}
+          onPress={handleSend}
+        >
+          <Text style={styles.sendIcon}>{'\u2191'}</Text>
+        </Pressable>
+      ) : (
+        <VoiceRecorder onRecordComplete={handleVoiceRecordComplete} />
+      )}
+    </>
+  );
+
   return (
     <View>
       {isUploading && uploadFileName !== null && (
         <UploadProgress percentage={uploadProgress} fileName={uploadFileName} />
       )}
 
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: colors.surface, borderTopColor: colors.border },
-        ]}
-      >
-        <Pressable style={styles.attachButton} onPress={() => setPickerVisible(true)}>
-          <Text style={[styles.attachIcon, { color: colors.accent }]}>+</Text>
-        </Pressable>
-
-        <TextInput
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          intensity={80}
+          tint="dark"
+          style={[styles.container, { borderTopColor: colors.border }]}
+        >
+          {inputContent}
+        </BlurView>
+      ) : (
+        <View
           style={[
-            styles.input,
-            { color: colors.textPrimary, backgroundColor: colors.inputBackground },
+            styles.container,
+            { backgroundColor: colors.surface, borderTopColor: colors.border },
           ]}
-          placeholder={t('chat.typeMessage')}
-          placeholderTextColor={colors.textSecondary}
-          value={text}
-          onChangeText={handleChangeText}
-          multiline
-          maxLength={4096}
-        />
-
-        {hasText ? (
-          <Pressable
-            style={[styles.sendButton, { backgroundColor: colors.accent }]}
-            onPress={handleSend}
-          >
-            <Text style={styles.sendIcon}>{'\u2191'}</Text>
-          </Pressable>
-        ) : (
-          <VoiceRecorder onRecordComplete={handleVoiceRecordComplete} />
-        )}
-      </View>
+        >
+          {inputContent}
+        </View>
+      )}
 
       <MediaPicker
         visible={pickerVisible}

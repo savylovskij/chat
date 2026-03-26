@@ -52,6 +52,7 @@ export default {
   'chat.slideToCancel': 'Slide to cancel',
   'chat.edited': 'edited',
   'chat.deleted': 'Message deleted',
+  'chat.selectChat': 'Select a chat to start messaging',
 
   // Context menu
   'menu.reply': 'Reply',
