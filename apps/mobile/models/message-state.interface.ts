@@ -1,6 +1,7 @@
 import { DeleteMessageMode } from '@shared/enums/delete-message-mode.enum';
 import { MessageStatus } from '@shared/enums/message-status.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
+import { MessageWeight } from '@shared/enums/message-weight.enum';
 import { MediaMetadata } from '@shared/types/media-metadata.interface';
 import { MessageReaction } from '@shared/types/message-reaction.interface';
 import { Message } from '@shared/types/message.interface';
@@ -8,6 +9,11 @@ import { Message } from '@shared/types/message.interface';
 export interface PendingMessage extends Message {
   status: MessageStatus;
   clientMessageId: string;
+}
+
+export interface SendMessageOptions {
+  weight?: MessageWeight;
+  timer?: number;
 }
 
 export interface MessageState {
@@ -23,6 +29,7 @@ export interface MessageState {
     type: MessageType,
     mediaUrl?: string,
     mediaMetadata?: MediaMetadata,
+    options?: SendMessageOptions,
   ) => Promise<void>;
   retrySendMessage: (clientMessageId: string) => Promise<void>;
   editMessage: (messageId: string, content: string) => Promise<void>;

@@ -1,13 +1,18 @@
 import { DeleteMessageMode } from '@shared/enums/delete-message-mode.enum';
 import { MessageStatus } from '@shared/enums/message-status.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
+import { MessageWeight } from '@shared/enums/message-weight.enum';
 import { MediaMetadata } from '@shared/types/media-metadata.interface';
 import { Message } from '@shared/types/message.interface';
 import { create } from 'zustand';
 
 import { signalManager } from '../crypto/signal-manager';
 import { EncryptedEnvelope } from '../models/encrypted-envelope.interface';
-import { MessageState, PendingMessage } from '../models/message-state.interface';
+import {
+  MessageState,
+  PendingMessage,
+  SendMessageOptions,
+} from '../models/message-state.interface';
 import { QueuedMessage } from '../models/queued-message.interface';
 import { apiClient } from '../services/api-client';
 import { keysService } from '../services/keys.service';
@@ -55,6 +60,8 @@ function createPendingMessage(
   type: MessageType,
   mediaUrl?: string,
   mediaMetadata?: MediaMetadata,
+  weight?: MessageWeight,
+  timer?: number,
 ): PendingMessage {
   return {
     id: clientMessageId,
@@ -62,12 +69,12 @@ function createPendingMessage(
     chatId,
     senderId: useAuthStore.getState().user?.id ?? '',
     type,
-    weight: 'normal' as Message['weight'],
+    weight: weight ?? MessageWeight.NORMAL,
     encryptedContent: content || null,
     mediaUrl: mediaUrl ?? null,
     mediaMetadata: mediaMetadata ?? null,
     replyToId: null,
-    timer: null,
+    timer: timer ?? null,
     isEdited: false,
     editedAt: null,
     deletedAt: null,
@@ -83,6 +90,8 @@ async function sendMessageToServer(
   clientMessageId: string,
   mediaUrl?: string,
   mediaMetadata?: MediaMetadata,
+  weight?: MessageWeight,
+  timer?: number,
 ): Promise<void> {
   const memberIds = useChatStore.getState().getChatMemberIds(chatId);
   let encryptedContent: string | undefined;
@@ -104,6 +113,8 @@ async function sendMessageToServer(
     mediaUrl,
     mediaMetadata,
     clientMessageId,
+    weight,
+    timer,
   });
 
   void keysService.checkAndReplenishPreKeys();
@@ -118,6 +129,8 @@ export const useMessageStore = create<MessageState>((set, get) => {
       queued.clientMessageId,
       queued.mediaUrl,
       queued.mediaMetadata,
+      queued.weight,
+      queued.timer,
     );
 
     set((state) => ({
@@ -178,6 +191,7 @@ export const useMessageStore = create<MessageState>((set, get) => {
       type: MessageType,
       mediaUrl?: string,
       mediaMetadata?: MediaMetadata,
+      options?: SendMessageOptions,
     ) => {
       const clientMessageId = crypto.randomUUID();
 
@@ -188,6 +202,8 @@ export const useMessageStore = create<MessageState>((set, get) => {
         type,
         mediaUrl,
         mediaMetadata,
+        options?.weight,
+        options?.timer,
       );
 
       set((state) => ({ pendingMessages: [...state.pendingMessages, pendingMessage] }));
@@ -200,6 +216,8 @@ export const useMessageStore = create<MessageState>((set, get) => {
           type,
           mediaUrl,
           mediaMetadata,
+          weight: options?.weight,
+          timer: options?.timer,
           createdAt: pendingMessage.createdAt,
           retryCount: 0,
         });
@@ -208,7 +226,16 @@ export const useMessageStore = create<MessageState>((set, get) => {
       }
 
       try {
-        await sendMessageToServer(chatId, content, type, clientMessageId, mediaUrl, mediaMetadata);
+        await sendMessageToServer(
+          chatId,
+          content,
+          type,
+          clientMessageId,
+          mediaUrl,
+          mediaMetadata,
+          options?.weight,
+          options?.timer,
+        );
 
         set((state) => ({
           pendingMessages: state.pendingMessages.map((pending) =>
@@ -233,6 +260,8 @@ export const useMessageStore = create<MessageState>((set, get) => {
           type,
           mediaUrl,
           mediaMetadata,
+          weight: options?.weight,
+          timer: options?.timer,
           createdAt: pendingMessage.createdAt,
           retryCount: 0,
         });

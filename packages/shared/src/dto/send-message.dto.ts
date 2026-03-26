@@ -1,6 +1,6 @@
-import { IsEnum, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
-import { MessageType } from '../enums';
+import { MessageType, MessageWeight } from '../enums';
 
 export class SendMessageDto {
   @IsUUID()
@@ -24,6 +24,15 @@ export class SendMessageDto {
   @IsOptional()
   @IsUUID()
   replyToId?: string;
+
+  @IsOptional()
+  @IsEnum(MessageWeight)
+  weight?: MessageWeight;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  timer?: number;
 
   @IsUUID()
   clientMessageId!: string;

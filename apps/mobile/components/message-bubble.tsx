@@ -22,6 +22,8 @@ import { Swipeable } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -43,7 +45,15 @@ function getWeightBubbleStyle(weight: MessageWeight): ViewStyle {
     case MessageWeight.IMPORTANT:
       return { borderLeftWidth: 3, borderLeftColor: '#2DD48C' };
     case MessageWeight.URGENT:
-      return { borderLeftWidth: 3, borderLeftColor: '#FF3B30' };
+      return {
+        borderLeftWidth: 3,
+        borderLeftColor: '#FF3B30',
+        shadowColor: '#FF3B30',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 6,
+      };
     case MessageWeight.WHISPER:
       return { opacity: 0.7 };
     default:
@@ -177,6 +187,24 @@ export const MessageBubble = memo(function MessageBubble({
     opacity: enterOpacity.value,
     transform: [{ translateX: enterTranslateX.value }, { rotate: `${enterRotate.value}deg` }],
   }));
+
+  const urgentGlow = useSharedValue(0.4);
+  const isUrgent = message.weight === MessageWeight.URGENT;
+
+  useEffect(() => {
+    if (isUrgent) {
+      urgentGlow.value = withRepeat(
+        withSequence(withTiming(0.8, { duration: 800 }), withTiming(0.4, { duration: 800 })),
+        -1,
+        true,
+      );
+    }
+  }, [isUrgent, urgentGlow]);
+
+  const urgentGlowStyle = useAnimatedStyle(() => {
+    if (!isUrgent) return {};
+    return { shadowOpacity: urgentGlow.value };
+  });
 
   const ghostOpacity = useSharedValue(1);
   const ghostScale = useSharedValue(1);
@@ -360,7 +388,7 @@ export const MessageBubble = memo(function MessageBubble({
         ]}
       >
         <Pressable onLongPress={handleLongPress} delayLongPress={300}>
-          <View
+          <Animated.View
             ref={bubbleRef}
             style={[
               styles.bubble,
@@ -371,6 +399,7 @@ export const MessageBubble = memo(function MessageBubble({
               },
               positionRadius,
               weightStyle,
+              urgentGlowStyle,
             ]}
           >
             <View style={styles.timerContentWrapper}>
@@ -402,7 +431,7 @@ export const MessageBubble = memo(function MessageBubble({
             {hasTimer && (
               <TimerProgress timerSeconds={message.timer!} createdAt={message.createdAt} />
             )}
-          </View>
+          </Animated.View>
         </Pressable>
 
         {reactions.length > 0 && <ReactionBadge reactions={reactions} onPress={onReactionPress} />}

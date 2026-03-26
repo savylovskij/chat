@@ -1,4 +1,5 @@
 import { MessageType } from '@shared/enums/message-type.enum';
+import { MessageWeight } from '@shared/enums/message-weight.enum';
 import { MediaMetadata } from '@shared/types/media-metadata.interface';
 
 export interface QueuedMessage {
@@ -8,6 +9,8 @@ export interface QueuedMessage {
   type: MessageType;
   mediaUrl?: string;
   mediaMetadata?: MediaMetadata;
+  weight?: MessageWeight;
+  timer?: number;
   createdAt: string;
   retryCount: number;
 }

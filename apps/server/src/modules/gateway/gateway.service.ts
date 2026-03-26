@@ -125,6 +125,8 @@ export class GatewayService {
       mediaUrl: payload.mediaUrl ?? null,
       mediaMetadata: payload.mediaMetadata ?? null,
       replyToId: payload.replyToId ?? null,
+      weight: payload.weight ?? 'normal',
+      timer: payload.timer ?? null,
     });
 
     const savedMessage = await this.messageRepository.save(message);
@@ -139,10 +141,15 @@ export class GatewayService {
       chatId: savedMessage.chatId,
       senderId: savedMessage.senderId,
       type: savedMessage.type,
+      weight: savedMessage.weight,
       encryptedContent: savedMessage.encryptedContent,
       mediaUrl: savedMessage.mediaUrl,
       mediaMetadata: savedMessage.mediaMetadata,
       replyToId: savedMessage.replyToId,
+      timer: savedMessage.timer,
+      isEdited: savedMessage.isEdited,
+      editedAt: savedMessage.editedAt?.toISOString() ?? null,
+      deletedAt: savedMessage.deletedAt?.toISOString() ?? null,
       clientMessageId: payload.clientMessageId,
       createdAt: savedMessage.createdAt.toISOString(),
     };
