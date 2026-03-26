@@ -1,6 +1,7 @@
 export default {
   // Auth
   'auth.login': 'Sign In',
+  'auth.registerFailed': 'Registration failed',
   'auth.register': 'Sign Up',
   'auth.phone': 'Phone number',
   'auth.verifyCode': 'Enter verification code',
@@ -54,6 +55,11 @@ export default {
   'chat.deleted': 'Message deleted',
   'chat.selectChat': 'Select a chat to start messaging',
 
+  // Chat info
+  'chatInfo.title': 'Chat Info',
+  'chatInfo.admin': 'Admin',
+  'chatInfo.sharedMedia': 'Shared Media',
+
   // Context menu
   'menu.reply': 'Reply',
   'menu.copy': 'Copy',
@@ -81,6 +87,10 @@ export default {
   'user.blockConfirm': "Block {{name}}? They won't be able to message you.",
   'user.blocked': 'Blocked',
   'user.blockedList': 'Blocked users',
+
+  // Contacts
+  'contacts.title': 'Contacts',
+  'contacts.noResults': 'No users found',
 
   // Settings
   'settings.title': 'Settings',
@@ -131,6 +141,12 @@ export default {
   'profile.members': 'Members',
   'profile.nameRequired': 'Display name is required',
   'profile.saved': 'Profile updated successfully',
+
+  // Feed
+  'feed.title': 'Activity',
+  'feed.chatCreated': 'Chat created',
+  'feed.joined': 'Joined',
+  'feed.profileUpdated': 'Profile updated',
 
   // Common
   'common.error': 'Error',

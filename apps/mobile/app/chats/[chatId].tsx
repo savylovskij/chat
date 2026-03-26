@@ -8,13 +8,14 @@ import { FlashList } from '@shopify/flash-list';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BlurHeader } from '../../components/blur-header';
 import { ConfettiExplosion } from '../../components/confetti-explosion';
 import { MessageBubble } from '../../components/message-bubble';
 import { MessageContextMenu } from '../../components/message-context-menu';
 import { MessageInput } from '../../components/message-input';
+import { ParticleBackground } from '../../components/particle-background';
 import { ProfileModal } from '../../components/profile-modal';
 import { TypingIndicator } from '../../components/typing-indicator';
 import { useChatsLayout } from '../../contexts/chats-layout.context';
@@ -36,6 +37,8 @@ interface DisplayMessage extends Message {
 }
 
 const COMBO_THRESHOLD = 3;
+const TIME_GAP_MEDIUM_MS = 5 * 60 * 1000;
+const TIME_GAP_LARGE_MS = 15 * 60 * 1000;
 
 export default function ChatRoomScreen() {
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
@@ -333,30 +336,62 @@ export default function ChatRoomScreen() {
   }, [handleOpenProfile, colors.accent]);
 
   const renderItem = useCallback(
-    ({ item }: { item: DisplayMessage }) => {
+    ({ item, index }: { item: DisplayMessage; index: number }) => {
       const messageReactions: MessageReaction[] = reactionsByMessage[item.id] ?? [];
 
+      const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+      let timeGapPadding = 0;
+      let showBreathingLine = false;
+
+      if (nextMessage !== null) {
+        const currentTime = new Date(item.createdAt).getTime();
+        const nextTime = new Date(nextMessage.createdAt).getTime();
+        const gap = currentTime - nextTime;
+
+        if (gap >= TIME_GAP_LARGE_MS) {
+          timeGapPadding = 24;
+          showBreathingLine = true;
+        } else if (gap >= TIME_GAP_MEDIUM_MS) {
+          timeGapPadding = 12;
+        }
+      }
+
       return (
-        <MessageBubble
-          message={item}
-          isOwnMessage={item.senderId === currentUser?.id}
-          status={item.status}
-          reactions={messageReactions}
-          onRetry={
-            item.status === MessageStatus.FAILED && item.clientMessageId !== undefined
-              ? () => handleRetry(item.clientMessageId!)
-              : undefined
-          }
-          onLongPress={(position) => handleLongPress(item, position)}
-          onReactionPress={() => {
-            setSelectedMessage(item);
-            setMenuAnchor({ x: 100, y: 300 });
-            setContextMenuVisible(true);
-          }}
-        />
+        <View style={timeGapPadding > 0 ? { paddingBottom: timeGapPadding } : undefined}>
+          {showBreathingLine && (
+            <View style={[styles.breathingLine, { backgroundColor: colors.border }]} />
+          )}
+          <MessageBubble
+            message={item}
+            isOwnMessage={item.senderId === currentUser?.id}
+            chatId={chatId ?? ''}
+            status={item.status}
+            reactions={messageReactions}
+            onRetry={
+              item.status === MessageStatus.FAILED && item.clientMessageId !== undefined
+                ? () => handleRetry(item.clientMessageId!)
+                : undefined
+            }
+            onReply={() => setReplyToMessage(item)}
+            onLongPress={(position) => handleLongPress(item, position)}
+            onReactionPress={() => {
+              setSelectedMessage(item);
+              setMenuAnchor({ x: 100, y: 300 });
+              setContextMenuVisible(true);
+            }}
+          />
+        </View>
       );
     },
-    [currentUser?.id, handleRetry, handleLongPress, reactionsByMessage],
+    [
+      currentUser?.id,
+      handleRetry,
+      handleLongPress,
+      reactionsByMessage,
+      messages,
+      chatId,
+      colors.border,
+    ],
   );
 
   const selectedReactions =
@@ -373,6 +408,8 @@ export default function ChatRoomScreen() {
         leftContent={headerLeftContent}
         rightContent={headerRightContent}
       />
+
+      <ParticleBackground />
 
       <FlashList
         data={messages}
@@ -440,5 +477,11 @@ const styles = StyleSheet.create({
   headerButtonIcon: {
     fontSize: 22,
     fontWeight: '400',
+  },
+  breathingLine: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 40,
+    marginVertical: 8,
+    opacity: 0.4,
   },
 });

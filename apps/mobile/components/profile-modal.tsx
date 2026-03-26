@@ -37,11 +37,21 @@ export const ProfileModal = memo(function ProfileModal({
       color: colors.onlineIndicator,
       time: format(new Date(), 'HH:mm'),
     });
-  } else if (contactLastSeen !== undefined) {
+  }
+
+  if (contactLastSeen !== undefined) {
     feedItems.push({
       label: t('chat.lastSeen', { time: format(new Date(contactLastSeen), 'HH:mm') }),
       color: colors.textSecondary,
       time: format(new Date(contactLastSeen), 'dd.MM'),
+    });
+  }
+
+  if (chat.createdAt) {
+    feedItems.push({
+      label: t('feed.chatCreated'),
+      color: colors.accent,
+      time: format(new Date(chat.createdAt), 'dd.MM.yyyy'),
     });
   }
 
@@ -82,10 +92,17 @@ export const ProfileModal = memo(function ProfileModal({
 
           {feedItems.length > 0 && (
             <View style={[styles.section, { borderTopColor: colors.border }]}>
-              <Text style={[styles.feedTitle, { color: colors.textSecondary }]}>Activity</Text>
+              <Text style={[styles.feedTitle, { color: colors.textSecondary }]}>
+                {t('feed.title')}
+              </Text>
               {feedItems.map((item, index) => (
                 <View key={index} style={styles.feedItem}>
-                  <View style={[styles.feedDot, { backgroundColor: item.color }]} />
+                  <View style={styles.feedTimeline}>
+                    <View style={[styles.feedDot, { backgroundColor: item.color }]} />
+                    {index < feedItems.length - 1 && (
+                      <View style={[styles.feedLine, { backgroundColor: item.color }]} />
+                    )}
+                  </View>
                   <View style={styles.feedContent}>
                     <Text style={[styles.feedLabel, { color: colors.textPrimary }]}>
                       {item.label}
@@ -176,17 +193,28 @@ const styles = StyleSheet.create({
   feedItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    minHeight: 40,
+  },
+  feedTimeline: {
+    alignItems: 'center',
+    width: 20,
+    marginRight: 10,
   },
   feedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 6,
-    marginRight: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 5,
+  },
+  feedLine: {
+    width: 2,
+    flex: 1,
+    marginTop: 4,
+    opacity: 0.3,
   },
   feedContent: {
     flex: 1,
+    paddingBottom: 12,
   },
   feedLabel: {
     fontSize: 14,

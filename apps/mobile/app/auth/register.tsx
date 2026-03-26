@@ -6,32 +6,50 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { useAuthStore } from '../../stores/auth.store';
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const router = useRouter();
 
-  const login = useAuthStore((state) => state.login);
+  const register = useAuthStore((state) => state.register);
 
   const [phone, setPhone] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = useCallback(async () => {
+  const handleRegister = useCallback(async () => {
     try {
       setError('');
-      await login(phone);
+      await register(phone, displayName);
       router.push('/auth/verify-otp');
-    } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : t('auth.loginFailed'));
+    } catch (registerError) {
+      setError(registerError instanceof Error ? registerError.message : t('auth.loginFailed'));
     }
-  }, [phone, login, router, t]);
+  }, [phone, displayName, register, router, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>{t('auth.appName')}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{t('auth.register')}</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         {t('auth.phonePrompt')}
       </Text>
+
+      <TextInput
+        style={[
+          styles.input,
+          {
+            color: colors.textPrimary,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+          },
+        ]}
+        placeholder={t('auth.displayName')}
+        placeholderTextColor={colors.textSecondary}
+        value={displayName}
+        onChangeText={setDisplayName}
+        autoComplete="name"
+        autoFocus
+      />
 
       <TextInput
         style={[
@@ -54,16 +72,16 @@ export default function LoginScreen() {
 
       <Pressable
         style={[styles.button, { backgroundColor: colors.accent }]}
-        onPress={() => void handleLogin()}
+        onPress={() => void handleRegister()}
       >
-        <Text style={styles.buttonText}>{t('auth.continue')}</Text>
+        <Text style={styles.buttonText}>{t('auth.register')}</Text>
       </Pressable>
 
-      <Pressable style={styles.linkRow} onPress={() => router.push('/auth/register')}>
+      <Pressable style={styles.linkRow} onPress={() => router.push('/auth/login')}>
         <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-          {t('auth.noAccount')}{' '}
+          {t('auth.hasAccount')}{' '}
         </Text>
-        <Text style={[styles.linkText, { color: colors.accent }]}>{t('auth.register')}</Text>
+        <Text style={[styles.linkText, { color: colors.accent }]}>{t('auth.login')}</Text>
       </Pressable>
     </View>
   );

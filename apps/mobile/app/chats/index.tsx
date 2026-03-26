@@ -7,6 +7,7 @@ import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 're
 
 import { BlurHeader } from '../../components/blur-header';
 import { ChatListItem } from '../../components/chat-list-item';
+import { FloatingBubbles } from '../../components/floating-bubbles';
 import { useChatsLayout } from '../../contexts/chats-layout.context';
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { useChatStore } from '../../stores/chat.store';
@@ -60,6 +61,11 @@ export default function ChatListScreen() {
           onChangeText={setSearchQuery}
         />
       </View>
+
+      <FloatingBubbles
+        chats={filteredChats}
+        onChatPress={(chatId) => router.push(`/chats/${chatId}`)}
+      />
 
       <FlashList
         data={filteredChats}

@@ -1,21 +1,66 @@
 import { MessageStatus } from '@shared/enums/message-status.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
+import { MessageWeight } from '@shared/enums/message-weight.enum';
 import { format } from 'date-fns';
 import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Animated as RNAnimated,
+  GestureResponderEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import type { TextStyle, ViewStyle } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { MessageBubbleProps } from '../models/message-bubble-props.interface';
+import { getChatAccentColor } from '../utils/chat-accent-color';
 import { formatFileSize } from '../utils/format-file-size';
 
 import { ImageViewer } from './image-viewer';
 import { ReactionBadge } from './reaction-badge';
+import { TimerProgress } from './timer-progress';
 import { VideoPlayer } from './video-player';
 import { VoicePlayer } from './voice-player';
+
+function getWeightBubbleStyle(weight: MessageWeight): ViewStyle {
+  switch (weight) {
+    case MessageWeight.IMPORTANT:
+      return { borderLeftWidth: 3, borderLeftColor: '#2DD48C' };
+    case MessageWeight.URGENT:
+      return { borderLeftWidth: 3, borderLeftColor: '#FF3B30' };
+    case MessageWeight.WHISPER:
+      return { opacity: 0.7 };
+    default:
+      return {};
+  }
+}
+
+function getWeightTextStyle(weight: MessageWeight): TextStyle {
+  switch (weight) {
+    case MessageWeight.IMPORTANT:
+      return { fontWeight: '600' };
+    case MessageWeight.URGENT:
+      return { fontWeight: '700' };
+    case MessageWeight.WHISPER:
+      return { fontSize: 12, fontStyle: 'italic' };
+    default:
+      return {};
+  }
+}
 
 function MessageStatusIcon({
   status,
@@ -39,9 +84,11 @@ function MessageStatusIcon({
 export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
+  chatId,
   status,
   reactions,
   onRetry,
+  onReply,
   onLongPress,
   onReactionPress,
 }: MessageBubbleProps) {
@@ -50,6 +97,7 @@ export const MessageBubble = memo(function MessageBubble({
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [videoPlayerVisible, setVideoPlayerVisible] = useState(false);
   const bubbleRef = useRef<View>(null);
+  const swipeableRef = useRef<Swipeable>(null);
 
   const handleFileDownload = useCallback(async () => {
     if (message.mediaUrl === null || message.mediaUrl === '') return;
@@ -79,23 +127,63 @@ export const MessageBubble = memo(function MessageBubble({
     [onLongPress],
   );
 
+  const enterTranslateX = useSharedValue(isOwnMessage ? 60 : -60);
+  const enterOpacity = useSharedValue(0);
+  const enterRotate = useSharedValue(isOwnMessage ? 3 : -3);
+
+  useEffect(() => {
+    enterTranslateX.value = withSpring(0, { damping: 14, stiffness: 120 });
+    enterOpacity.value = withTiming(1, { duration: 300 });
+    enterRotate.value = withSpring(0, { damping: 14, stiffness: 120 });
+  }, [enterTranslateX, enterOpacity, enterRotate]);
+
+  const enterAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: enterOpacity.value,
+    transform: [{ translateX: enterTranslateX.value }, { rotate: `${enterRotate.value}deg` }],
+  }));
+
+  const ghostOpacity = useSharedValue(1);
+  const ghostScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (message.deletedAt !== null) {
+      ghostOpacity.value = withTiming(0, { duration: 600 });
+      ghostScale.value = withTiming(0.8, { duration: 600 });
+    }
+  }, [message.deletedAt, ghostOpacity, ghostScale]);
+
+  const ghostAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: ghostOpacity.value,
+    transform: [{ scale: ghostScale.value }],
+  }));
+
   if (message.deletedAt !== null) {
     return (
-      <View style={[styles.container, isOwnMessage ? styles.ownContainer : styles.otherContainer]}>
+      <Animated.View
+        style={[
+          styles.container,
+          isOwnMessage ? styles.ownContainer : styles.otherContainer,
+          ghostAnimatedStyle,
+        ]}
+      >
         <View style={[styles.bubble, { backgroundColor: colors.surface }]}>
           <Text style={[styles.deletedText, { color: colors.textSecondary }]}>
             {t('chat.messageDeleted')}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   const isFailed = status === MessageStatus.FAILED;
   const isPending = status === MessageStatus.PENDING;
-  const bubbleColor = isOwnMessage ? colors.senderBubble : colors.receiverBubble;
+  const isDark = colors.background === '#1A1A2E';
+  const bubbleColor = isOwnMessage ? getChatAccentColor(chatId, isDark) : colors.receiverBubble;
   const bubbleOpacity = isPending ? 0.7 : 1;
   const time = format(new Date(message.createdAt), 'HH:mm');
+
+  const weightStyle = getWeightBubbleStyle(message.weight);
+  const weightTextStyle = getWeightTextStyle(message.weight);
 
   const renderContent = () => {
     switch (message.type) {
@@ -191,42 +279,85 @@ export const MessageBubble = memo(function MessageBubble({
 
       default:
         return (
-          <Text style={[styles.messageText, { color: colors.textPrimary }]}>
+          <Text style={[styles.messageText, { color: colors.textPrimary }, weightTextStyle]}>
             {message.encryptedContent ?? ''}
           </Text>
         );
     }
   };
 
-  return (
-    <View style={[styles.container, isOwnMessage ? styles.ownContainer : styles.otherContainer]}>
-      <Pressable onLongPress={handleLongPress} delayLongPress={300}>
-        <View
-          ref={bubbleRef}
-          style={[styles.bubble, { backgroundColor: bubbleColor, opacity: bubbleOpacity }]}
-        >
-          {renderContent()}
+  const renderReplyAction = (
+    _progress: RNAnimated.AnimatedInterpolation<number>,
+    dragX: RNAnimated.AnimatedInterpolation<number>,
+  ) => {
+    const translateX = dragX.interpolate({
+      inputRange: [0, 60],
+      outputRange: [-60, 0],
+      extrapolate: 'clamp',
+    });
 
-          <View style={styles.metaRow}>
-            {message.isEdited && (
-              <Text style={[styles.editedLabel, { color: colors.textSecondary }]}>edited</Text>
-            )}
-            <Text style={[styles.time, { color: colors.textSecondary }]}>{time}</Text>
-            {isOwnMessage && status !== undefined && (
-              <MessageStatusIcon status={status} color={colors.textSecondary} />
+    return (
+      <RNAnimated.View style={[styles.replySwipeAction, { transform: [{ translateX }] }]}>
+        <Text style={styles.replySwipeIcon}>{'\u21A9'}</Text>
+      </RNAnimated.View>
+    );
+  };
+
+  const handleSwipeReply = () => {
+    swipeableRef.current?.close();
+    onReply?.();
+  };
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderLeftActions={renderReplyAction}
+      onSwipeableOpen={handleSwipeReply}
+      overshootLeft={false}
+    >
+      <Animated.View
+        style={[
+          styles.container,
+          isOwnMessage ? styles.ownContainer : styles.otherContainer,
+          enterAnimatedStyle,
+        ]}
+      >
+        <Pressable onLongPress={handleLongPress} delayLongPress={300}>
+          <View
+            ref={bubbleRef}
+            style={[
+              styles.bubble,
+              { backgroundColor: bubbleColor, opacity: bubbleOpacity },
+              weightStyle,
+            ]}
+          >
+            {renderContent()}
+
+            <View style={styles.metaRow}>
+              {message.isEdited && (
+                <Text style={[styles.editedLabel, { color: colors.textSecondary }]}>edited</Text>
+              )}
+              <Text style={[styles.time, { color: colors.textSecondary }]}>{time}</Text>
+              {isOwnMessage && status !== undefined && (
+                <MessageStatusIcon status={status} color={colors.textSecondary} />
+              )}
+            </View>
+
+            {message.timer !== null && message.timer > 0 && (
+              <TimerProgress timerSeconds={message.timer} createdAt={message.createdAt} />
             )}
           </View>
-        </View>
-      </Pressable>
-
-      {reactions.length > 0 && <ReactionBadge reactions={reactions} onPress={onReactionPress} />}
-
-      {isFailed && onRetry !== undefined && (
-        <Pressable onPress={handleRetry} style={styles.retryButton}>
-          <Text style={styles.retryText}>{t('message.retry')}</Text>
         </Pressable>
-      )}
-    </View>
+
+        {reactions.length > 0 && <ReactionBadge reactions={reactions} onPress={onReactionPress} />}
+
+        {isFailed && onRetry !== undefined && (
+          <Pressable onPress={handleRetry} style={styles.retryButton}>
+            <Text style={styles.retryText}>{t('message.retry')}</Text>
+          </Pressable>
+        )}
+      </Animated.View>
+    </Swipeable>
   );
 });
 
@@ -338,5 +469,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  replySwipeAction: {
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  replySwipeIcon: {
+    fontSize: 22,
+    color: '#2DD48C',
   },
 });

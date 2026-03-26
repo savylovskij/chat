@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { DeviceEntity } from './entities/device.entity';
 import { UserEntity } from './entities/user.entity';
@@ -45,14 +45,15 @@ export class UsersService {
   }
 
   async search(query: string, limit: number = 20) {
-    const users = await this.userRepository.find({
-      where: {
-        displayName: ILike(`%${query}%`),
-      },
-      take: limit,
-    });
+    const users = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.display_name % :query', { query })
+      .orderBy('similarity(user.display_name, :query)', 'DESC')
+      .setParameter('query', query)
+      .take(limit)
+      .getMany();
 
-    return users.map((u) => this.toPublicUser(u));
+    return users.map((user) => this.toPublicUser(user));
   }
 
   async getById(userId: string) {

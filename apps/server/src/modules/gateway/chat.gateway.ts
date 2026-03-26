@@ -32,6 +32,8 @@ interface AuthenticatedSocket extends Socket {
 
 const TYPING_TIMEOUT_MS = 5000;
 const PRESENCE_TIMEOUT_MS = 45000;
+const WS_RATE_LIMIT_WINDOW_MS = 60000;
+const WS_RATE_LIMIT_MAX = 30;
 
 @WebSocketGateway({ namespace: '/chat' })
 @UseGuards(WsAuthGuard)
@@ -43,6 +45,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(ChatGateway.name);
   private readonly typingTimers = new Map<string, NodeJS.Timeout>();
   private readonly presenceTimers = new Map<string, NodeJS.Timeout>();
+  private readonly messageRateMap = new Map<string, number[]>();
 
   constructor(
     private readonly sessionService: GatewaySessionService,
@@ -125,6 +128,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() payload: SendMessageDto,
   ) {
     const { userId } = client.user;
+
+    if (this.isRateLimited(userId)) {
+      return { error: { code: 'RATE_LIMIT', message: 'Too many messages, slow down' } };
+    }
 
     try {
       const message = await this.gatewayService.createMessage(userId, payload);
@@ -391,5 +398,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       clearTimeout(timer);
       this.presenceTimers.delete(userId);
     }
+  }
+
+  private isRateLimited(userId: string): boolean {
+    const now = Date.now();
+    const timestamps = this.messageRateMap.get(userId) ?? [];
+    const recentTimestamps = timestamps.filter(
+      (timestamp) => now - timestamp < WS_RATE_LIMIT_WINDOW_MS,
+    );
+
+    if (recentTimestamps.length >= WS_RATE_LIMIT_MAX) {
+      return true;
+    }
+
+    recentTimestamps.push(now);
+    this.messageRateMap.set(userId, recentTimestamps);
+
+    return false;
   }
 }

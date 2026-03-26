@@ -9,6 +9,7 @@ import { ChatSidebarProps } from '../models/chat-sidebar-props.interface';
 import { useChatStore } from '../stores/chat.store';
 
 import { ChatListItem } from './chat-list-item';
+import { FloatingBubbles } from './floating-bubbles';
 
 export const ChatSidebar = memo(function ChatSidebar({
   onChatPress,
@@ -54,6 +55,12 @@ export const ChatSidebar = memo(function ChatSidebar({
           onChangeText={setSearchQuery}
         />
       </View>
+
+      <FloatingBubbles
+        chats={filteredChats}
+        activeChatId={activeChatId}
+        onChatPress={onChatPress}
+      />
 
       <FlashList
         data={filteredChats}
