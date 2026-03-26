@@ -3,13 +3,16 @@ import { MessageType } from '@shared/enums/message-type.enum';
 import { MediaMetadata } from '@shared/types/media-metadata.interface';
 import { Message } from '@shared/types/message.interface';
 import { FlashList } from '@shopify/flash-list';
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text } from 'react-native';
 
+import { BlurHeader } from '../../components/blur-header';
 import { MessageBubble } from '../../components/message-bubble';
 import { MessageInput } from '../../components/message-input';
+import { ProfileModal } from '../../components/profile-modal';
 import { TypingIndicator } from '../../components/typing-indicator';
+import { useChatsLayout } from '../../contexts/chats-layout.context';
 import { signalManager } from '../../crypto/signal-manager';
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { MediaAsset } from '../../models/media-asset.interface';
@@ -31,6 +34,8 @@ export default function ChatRoomScreen() {
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
   const colors = useThemeColors();
   const navigation = useNavigation();
+  const router = useRouter();
+  const { isMobile, toggleProfilePanel } = useChatsLayout();
 
   const currentUser = useAuthStore((state) => state.user);
   const chat = useChatStore((state) => state.chats.find((item) => item.id === chatId));
@@ -45,6 +50,7 @@ export default function ChatRoomScreen() {
 
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
+  const [mobileProfileVisible, setMobileProfileVisible] = useState(false);
 
   const messages = useMemo((): DisplayMessage[] => {
     if (!chatId) return [];
@@ -67,10 +73,8 @@ export default function ChatRoomScreen() {
   const canLoadMore = chatId ? (hasMore[chatId] ?? true) : false;
 
   useEffect(() => {
-    if (chat?.name !== undefined && chat.name !== '') {
-      navigation.setOptions({ title: chat.name });
-    }
-  }, [chat?.name, navigation]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     if (chatId) {
@@ -165,6 +169,40 @@ export default function ChatRoomScreen() {
     [retrySendMessage],
   );
 
+  const handleBack = useCallback(() => {
+    if (isMobile) {
+      router.back();
+    }
+  }, [isMobile, router]);
+
+  const chatTitle = chat?.name ?? '';
+
+  const headerLeftContent = useMemo(() => {
+    if (!isMobile) return undefined;
+
+    return (
+      <Pressable style={styles.headerButton} onPress={handleBack}>
+        <Text style={[styles.headerButtonIcon, { color: colors.accent }]}>{'\u2039'}</Text>
+      </Pressable>
+    );
+  }, [isMobile, handleBack, colors.accent]);
+
+  const handleOpenProfile = useCallback(() => {
+    if (isMobile) {
+      setMobileProfileVisible(true);
+    } else {
+      toggleProfilePanel();
+    }
+  }, [isMobile, toggleProfilePanel]);
+
+  const headerRightContent = useMemo(() => {
+    return (
+      <Pressable style={styles.headerButton} onPress={handleOpenProfile}>
+        <Text style={[styles.headerButtonIcon, { color: colors.accent }]}>{'\u24D8'}</Text>
+      </Pressable>
+    );
+  }, [handleOpenProfile, colors.accent]);
+
   const renderItem = useCallback(
     ({ item }: { item: DisplayMessage }) => (
       <MessageBubble
@@ -187,6 +225,12 @@ export default function ChatRoomScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
     >
+      <BlurHeader
+        title={chatTitle}
+        leftContent={headerLeftContent}
+        rightContent={headerRightContent}
+      />
+
       <FlashList
         data={messages}
         renderItem={renderItem}
@@ -205,6 +249,13 @@ export default function ChatRoomScreen() {
         uploadProgress={uploadProgress}
         uploadFileName={uploadFileName}
       />
+      {isMobile && chatId !== undefined && (
+        <ProfileModal
+          visible={mobileProfileVisible}
+          chatId={chatId}
+          onClose={() => setMobileProfileVisible(false)}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -212,5 +263,15 @@ export default function ChatRoomScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtonIcon: {
+    fontSize: 22,
+    fontWeight: '400',
   },
 });

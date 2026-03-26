@@ -5,8 +5,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { BlurHeader } from '../../components/blur-header';
 import { ChatListItem } from '../../components/chat-list-item';
-import { useResponsiveLayout } from '../../hooks/use-responsive-layout';
+import { useChatsLayout } from '../../contexts/chats-layout.context';
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { useChatStore } from '../../stores/chat.store';
 
@@ -16,7 +17,7 @@ export default function ChatListScreen() {
   const router = useRouter();
   const { chats, isLoading, fetchChats } = useChatStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const { isMobile } = useResponsiveLayout();
+  const { isMobile } = useChatsLayout();
 
   useEffect(() => {
     void fetchChats();
@@ -42,6 +43,8 @@ export default function ChatListScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {isMobile && <BlurHeader title={t('chat.title')} />}
+
       <View
         style={[
           styles.searchContainer,

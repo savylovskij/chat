@@ -6,20 +6,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { BlurHeaderProps } from '../models/blur-header-props.interface';
 
-export const BlurHeader = memo(function BlurHeader({ title, onBack }: BlurHeaderProps) {
+export const BlurHeader = memo(function BlurHeader({
+  title,
+  onBack,
+  leftContent,
+  rightContent,
+}: BlurHeaderProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
 
   const headerContent = (
     <View style={[styles.content, { paddingTop: insets.top }]}>
-      {onBack && (
-        <Pressable style={styles.backButton} onPress={onBack}>
-          <Text style={[styles.backIcon, { color: colors.accent }]}>‹</Text>
-        </Pressable>
-      )}
+      <View style={styles.leftSection}>
+        {leftContent}
+        {onBack !== undefined && leftContent === undefined && (
+          <Pressable style={styles.backButton} onPress={onBack}>
+            <Text style={[styles.backIcon, { color: colors.accent }]}>{'\u2039'}</Text>
+          </Pressable>
+        )}
+      </View>
+
       <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
         {title}
       </Text>
+
+      <View style={styles.rightSection}>{rightContent}</View>
     </View>
   );
 
@@ -55,14 +66,24 @@ const styles = StyleSheet.create({
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 40,
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    minWidth: 40,
   },
   backButton: {
     width: 32,
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
   },
   backIcon: {
     fontSize: 28,
@@ -72,5 +93,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     flex: 1,
+    textAlign: 'center',
   },
 });
