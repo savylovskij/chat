@@ -8,6 +8,7 @@
     "format": "prettier --write 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.ts'",
     "format:check": "prettier --check 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.ts'",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "prepare": "husky"
   },
   "lint-staged": {

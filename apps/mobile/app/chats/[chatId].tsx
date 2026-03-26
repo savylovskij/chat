@@ -100,6 +100,13 @@ export default function ChatRoomScreen() {
 
   const canLoadMore = chatId ? (hasMore[chatId] ?? true) : false;
 
+  const keyExtractor = useCallback((item: DisplayMessage) => item.id, []);
+
+  const getItemType = useCallback(
+    (item: DisplayMessage) => (item.senderId === currentUser?.id ? 'own' : 'other'),
+    [currentUser?.id],
+  );
+
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
@@ -418,7 +425,10 @@ export default function ChatRoomScreen() {
       <FlashList
         data={messages}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
+        estimatedItemSize={72}
+        drawDistance={300}
+        getItemType={getItemType}
         inverted
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}

@@ -1,7 +1,7 @@
 import { Chat } from '@shared/types/chat.interface';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -24,9 +24,15 @@ export default function ChatListScreen() {
     void fetchChats();
   }, [fetchChats]);
 
-  const filteredChats = searchQuery
-    ? chats.filter((chat) => chat.name?.toLowerCase().includes(searchQuery.toLowerCase()))
-    : chats;
+  const filteredChats = useMemo(
+    () =>
+      searchQuery
+        ? chats.filter((chat) => chat.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+        : chats,
+    [chats, searchQuery],
+  );
+
+  const keyExtractor = useCallback((item: Chat) => item.id, []);
 
   const handleChatPress = useCallback(
     (chat: Chat) => {
@@ -70,7 +76,9 @@ export default function ChatListScreen() {
       <FlashList
         data={filteredChats}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
+        estimatedItemSize={76}
+        drawDistance={250}
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={() => void fetchChats()} />
         }
