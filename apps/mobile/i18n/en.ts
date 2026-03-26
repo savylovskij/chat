@@ -90,6 +90,18 @@ export default {
   'settings.devices': 'Active Devices',
   'settings.theme': 'Appearance',
   'settings.storage': 'Data & Storage',
+  'settings.thisDevice': 'This device',
+  'settings.lastActive': 'Last active',
+  'settings.terminate': 'Terminate',
+  'settings.terminateSession': 'Terminate Session',
+  'settings.terminateConfirm': 'Terminate session on {{device}}?',
+  'settings.terminateAllOther': 'Terminate All Other Sessions',
+  'settings.terminateAllSessions': 'Terminate All Sessions',
+  'settings.terminateAllConfirm':
+    'Terminate all other sessions? You will stay logged in on this device only.',
+  'settings.disable2FA': 'Disable 2FA',
+  'settings.disable2FAConfirm': 'Are you sure you want to disable two-factor authentication?',
+  'settings.enable2FADescription': 'Add an extra layer of security to your account',
 
   // Storage
   'storage.title': 'Data & Storage',
@@ -117,6 +129,8 @@ export default {
   'profile.about': 'About',
   'profile.e2ee': 'End-to-end encrypted',
   'profile.members': 'Members',
+  'profile.nameRequired': 'Display name is required',
+  'profile.saved': 'Profile updated successfully',
 
   // Common
   'common.error': 'Error',

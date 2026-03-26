@@ -8,6 +8,7 @@ import { useNetworkStatus } from '../hooks/use-network-status';
 import '../i18n';
 import { networkMonitorService } from '../services/network-monitor.service';
 import { offlineQueueService } from '../services/offline-queue.service';
+import { pushService } from '../services/push.service';
 import { useAuthStore } from '../stores/auth.store';
 import { useStorageStore } from '../stores/storage.store';
 
@@ -21,6 +22,9 @@ export default function RootLayout() {
   useEffect(() => {
     networkMonitorService.start();
     void offlineQueueService.load();
+    pushService.setupNotificationListeners();
+
+    return () => pushService.cleanup();
   }, []);
 
   useEffect(() => {

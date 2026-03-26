@@ -40,4 +40,8 @@ export class GatewaySessionService {
   getSocketCount(userId: string): number {
     return this.sessions.get(userId)?.size ?? 0;
   }
+
+  getOnlineUserIds(): string[] {
+    return Array.from(this.sessions.keys());
+  }
 }

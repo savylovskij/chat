@@ -34,6 +34,10 @@ const envSchema = Joi.object({
   S3_ACCESS_KEY_ID: Joi.string().required(),
   S3_SECRET_ACCESS_KEY: Joi.string().required(),
   S3_BUCKET: Joi.string().required(),
+
+  FIREBASE_PROJECT_ID: Joi.string().optional().allow(''),
+  FIREBASE_PRIVATE_KEY: Joi.string().optional().allow(''),
+  FIREBASE_CLIENT_EMAIL: Joi.string().optional().allow(''),
 }).unknown(true);
 
 export function validateEnv(): void {

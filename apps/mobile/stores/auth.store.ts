@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { AuthState } from '../models/auth-state.interface';
 import { apiClient } from '../services/api-client';
 import { keysService } from '../services/keys.service';
+import { pushService } from '../services/push.service';
 
 const TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -69,6 +70,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch {
         // Keys will be uploaded on next session restore
       }
+
+      try {
+        await pushService.registerForPushNotifications();
+      } catch {
+        // Push registration is non-critical
+      }
     }
   },
 
@@ -96,6 +103,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await keysService.initializeAndUploadKeys();
     } catch {
       // Keys will be uploaded on next session restore
+    }
+
+    try {
+      await pushService.registerForPushNotifications();
+    } catch {
+      // Push registration is non-critical
     }
   },
 
@@ -170,6 +183,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await keysService.initializeAndUploadKeys();
     } catch {
       // Non-critical — E2EE will initialize on next attempt
+    }
+
+    try {
+      await pushService.registerForPushNotifications();
+    } catch {
+      // Push registration is non-critical
     }
   },
 }));

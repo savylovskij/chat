@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -18,12 +19,31 @@ export const ProfilePanel = memo(function ProfilePanel({
   const colors = useThemeColors();
   const chat = useChatStore((state) => state.chats.find((item) => item.id === chatId));
   const onlineUsers = usePresenceStore((state) => state.onlineUsers);
+  const lastSeen = usePresenceStore((state) => state.lastSeen);
 
   if (!chat) {
     return null;
   }
 
-  const isOnline = chat.createdBy ? onlineUsers.has(chat.createdBy) : false;
+  const contactId = chat.createdBy ?? '';
+  const isOnline = contactId !== '' ? onlineUsers.has(contactId) : false;
+  const contactLastSeen = contactId !== '' ? lastSeen[contactId] : undefined;
+
+  const feedItems: { label: string; color: string; time: string }[] = [];
+
+  if (isOnline) {
+    feedItems.push({
+      label: t('chat.online'),
+      color: colors.onlineIndicator,
+      time: format(new Date(), 'HH:mm'),
+    });
+  } else if (contactLastSeen !== undefined) {
+    feedItems.push({
+      label: t('chat.lastSeen', { time: format(new Date(contactLastSeen), 'HH:mm') }),
+      color: colors.textSecondary,
+      time: format(new Date(contactLastSeen), 'dd.MM'),
+    });
+  }
 
   return (
     <View
@@ -41,7 +61,7 @@ export const ProfilePanel = memo(function ProfilePanel({
           {t('profile.title')}
         </Text>
         <Pressable onPress={onClose} style={styles.closeButton}>
-          <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>✕</Text>
+          <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>{'\u2715'}</Text>
         </Pressable>
       </View>
 
@@ -61,9 +81,34 @@ export const ProfilePanel = memo(function ProfilePanel({
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
               {t('profile.e2ee')}
             </Text>
-            <Text style={[styles.infoValue, { color: colors.onlineIndicator }]}>🔒</Text>
+            <Text style={[styles.infoValue, { color: colors.onlineIndicator }]}>{'\u{1F512}'}</Text>
           </View>
         </View>
+
+        {feedItems.length > 0 && (
+          <View style={[styles.section, { borderTopColor: colors.border }]}>
+            <Text style={[styles.feedTitle, { color: colors.textSecondary }]}>Activity</Text>
+            {feedItems.map((item, index) => (
+              <View key={index} style={styles.feedItem}>
+                <View style={[styles.feedDot, { backgroundColor: item.color }]} />
+                <View
+                  style={[
+                    styles.feedLine,
+                    index < feedItems.length - 1 ? { backgroundColor: item.color } : undefined,
+                  ]}
+                />
+                <View style={styles.feedContent}>
+                  <Text style={[styles.feedLabel, { color: colors.textPrimary }]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.feedTime, { color: colors.textSecondary }]}>
+                    {item.time}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -125,5 +170,41 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 14,
+  },
+  feedTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  feedItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  feedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+    marginRight: 10,
+  },
+  feedLine: {
+    position: 'absolute',
+    left: 3,
+    top: 16,
+    width: 2,
+    height: 20,
+  },
+  feedContent: {
+    flex: 1,
+  },
+  feedLabel: {
+    fontSize: 14,
+  },
+  feedTime: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

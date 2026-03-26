@@ -15,6 +15,8 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RegisterPushTokenDto } from '../notifications/dto/register-push-token.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
@@ -23,7 +25,10 @@ import { UsersService } from './users.service';
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
@@ -51,6 +56,16 @@ export class UsersController {
   async getDevices(@CurrentUser() user: { userId: string }) {
     const devices = await this.usersService.getDevices(user.userId);
     return { data: devices };
+  }
+
+  @Patch('me/push-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Register push notification token for current device' })
+  async registerPushToken(
+    @CurrentUser() user: { userId: string; deviceId: string },
+    @Body() dto: RegisterPushTokenDto,
+  ) {
+    await this.notificationsService.registerPushToken(user.userId, user.deviceId, dto.pushToken);
   }
 
   @Delete('me/devices/:deviceId')

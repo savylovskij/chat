@@ -9,6 +9,9 @@ export default function SettingsLayout() {
   return (
     <Stack screenOptions={screenOptions}>
       <Stack.Screen name="storage" options={{ title: t('storage.title') }} />
+      <Stack.Screen name="devices" options={{ title: t('settings.devices') }} />
+      <Stack.Screen name="security" options={{ title: t('settings.security') }} />
+      <Stack.Screen name="profile" options={{ title: t('settings.editProfile') }} />
     </Stack>
   );
 }

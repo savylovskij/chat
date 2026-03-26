@@ -9,6 +9,7 @@ import { HealthModule } from './modules/health/health.module';
 import { KeysModule } from './modules/keys/keys.module';
 import { MediaModule } from './modules/media/media.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { AppThrottlerModule } from './modules/throttler/throttler.module';
 import { UsersModule } from './modules/users/users.module';
@@ -25,6 +26,7 @@ import { UsersModule } from './modules/users/users.module';
     MessagesModule,
     MediaModule,
     KeysModule,
+    NotificationsModule,
     GatewayModule,
   ],
   providers: [

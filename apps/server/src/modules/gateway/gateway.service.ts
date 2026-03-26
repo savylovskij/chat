@@ -271,6 +271,15 @@ export class GatewayService {
     return { chatId: message.chatId };
   }
 
+  async getUserDisplayName(userId: string): Promise<string> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['displayName'],
+    });
+
+    return user?.displayName ?? 'User';
+  }
+
   private async assertMembership(chatId: string, userId: string): Promise<ChatMemberEntity> {
     const member = await this.memberRepository.findOne({
       where: { chatId, userId },

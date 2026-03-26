@@ -21,6 +21,7 @@ import {
 import { Server, Socket } from 'socket.io';
 
 import { WsAuthGuard } from '../../common/guards/ws-auth.guard';
+import { NotificationsService } from '../notifications/notifications.service';
 
 import { GatewaySessionService } from './gateway-session.service';
 import { GatewayService } from './gateway.service';
@@ -46,6 +47,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly sessionService: GatewaySessionService,
     private readonly gatewayService: GatewayService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async handleConnection(client: AuthenticatedSocket) {
@@ -133,6 +135,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       this.clearTypingTimer(`${payload.chatId}:${userId}`);
+
+      const onlineUserIds = this.sessionService.getOnlineUserIds();
+      const senderName = await this.gatewayService.getUserDisplayName(userId);
+
+      void this.notificationsService.sendPushToOfflineMembers(
+        payload.chatId,
+        userId,
+        senderName,
+        onlineUserIds,
+      );
 
       return { data: message };
     } catch (error) {
