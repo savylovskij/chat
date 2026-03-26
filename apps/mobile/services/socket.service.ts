@@ -8,6 +8,8 @@ import { useChatStore } from '../stores/chat.store';
 import { useMessageStore } from '../stores/message.store';
 import { usePresenceStore } from '../stores/presence.store';
 
+import { offlineQueueService } from './offline-queue.service';
+
 const WS_URL: string =
   (Constants.expoConfig?.extra?.wsUrl as string | undefined) ?? 'http://localhost:3000';
 
@@ -84,6 +86,7 @@ class SocketService {
       this.socket?.emit('chat:join', { chatId: chat.id });
     }
     void this.syncMissedMessages();
+    void offlineQueueService.flush();
   };
 
   private onDisconnect = () => {

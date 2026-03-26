@@ -1,10 +1,12 @@
+import { MessageStatus } from '@shared/enums/message-status.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
 import { format } from 'date-fns';
 import { File, Paths } from 'expo-file-system';
+import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
 import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { MessageBubbleProps } from '../models/message-bubble-props.interface';
@@ -14,9 +16,30 @@ import { ImageViewer } from './image-viewer';
 import { VideoPlayer } from './video-player';
 import { VoicePlayer } from './voice-player';
 
+function MessageStatusIcon({
+  status,
+  color,
+}: {
+  status: MessageStatus;
+  color: string;
+}): React.ReactElement | null {
+  switch (status) {
+    case MessageStatus.PENDING:
+      return <Text style={[styles.statusIcon, { color }]}>{'\u{1F551}'}</Text>;
+    case MessageStatus.SENT:
+      return <Text style={[styles.statusIcon, { color }]}>{'\u2713'}</Text>;
+    case MessageStatus.FAILED:
+      return <Text style={[styles.statusIcon, { color: '#FF3B30' }]}>{'\u0021'}</Text>;
+    default:
+      return null;
+  }
+}
+
 export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
+  status,
+  onRetry,
 }: MessageBubbleProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
@@ -37,6 +60,12 @@ export const MessageBubble = memo(function MessageBubble({
     }
   }, [message.mediaUrl, message.mediaMetadata?.fileName, t]);
 
+  const handleRetry = useCallback(() => {
+    if (onRetry !== undefined) {
+      onRetry();
+    }
+  }, [onRetry]);
+
   if (message.deletedAt !== null) {
     return (
       <View style={[styles.container, isOwnMessage ? styles.ownContainer : styles.otherContainer]}>
@@ -49,7 +78,10 @@ export const MessageBubble = memo(function MessageBubble({
     );
   }
 
+  const isFailed = status === MessageStatus.FAILED;
+  const isPending = status === MessageStatus.PENDING;
   const bubbleColor = isOwnMessage ? colors.senderBubble : colors.receiverBubble;
+  const bubbleOpacity = isPending ? 0.7 : 1;
   const time = format(new Date(message.createdAt), 'HH:mm');
 
   const renderContent = () => {
@@ -62,7 +94,8 @@ export const MessageBubble = memo(function MessageBubble({
                 <Image
                   source={{ uri: message.mediaUrl }}
                   style={styles.mediaImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
                 />
               </Pressable>
             )}
@@ -92,7 +125,8 @@ export const MessageBubble = memo(function MessageBubble({
                   <Image
                     source={{ uri: message.mediaUrl }}
                     style={styles.mediaImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
                   />
                   <View style={styles.playButton}>
                     <Text style={styles.playIcon}>{'\u25B6'}</Text>
@@ -153,7 +187,7 @@ export const MessageBubble = memo(function MessageBubble({
 
   return (
     <View style={[styles.container, isOwnMessage ? styles.ownContainer : styles.otherContainer]}>
-      <View style={[styles.bubble, { backgroundColor: bubbleColor }]}>
+      <View style={[styles.bubble, { backgroundColor: bubbleColor, opacity: bubbleOpacity }]}>
         {renderContent()}
 
         <View style={styles.metaRow}>
@@ -161,8 +195,17 @@ export const MessageBubble = memo(function MessageBubble({
             <Text style={[styles.editedLabel, { color: colors.textSecondary }]}>edited</Text>
           )}
           <Text style={[styles.time, { color: colors.textSecondary }]}>{time}</Text>
+          {isOwnMessage && status !== undefined && (
+            <MessageStatusIcon status={status} color={colors.textSecondary} />
+          )}
         </View>
       </View>
+
+      {isFailed && onRetry !== undefined && (
+        <Pressable onPress={handleRetry} style={styles.retryButton}>
+          <Text style={styles.retryText}>{t('message.retry')}</Text>
+        </Pressable>
+      )}
     </View>
   );
 });
@@ -203,6 +246,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   time: {
+    fontSize: 11,
+  },
+  statusIcon: {
     fontSize: 11,
   },
   mediaImage: {
@@ -260,5 +306,17 @@ const styles = StyleSheet.create({
   voicePlaceholderText: {
     fontSize: 14,
     fontStyle: 'italic',
+  },
+  retryButton: {
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FF3B30',
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

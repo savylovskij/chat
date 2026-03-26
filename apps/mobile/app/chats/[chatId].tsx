@@ -1,3 +1,4 @@
+import { MessageStatus } from '@shared/enums/message-status.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
 import { MediaMetadata } from '@shared/types/media-metadata.interface';
 import { Message } from '@shared/types/message.interface';
@@ -12,6 +13,7 @@ import { TypingIndicator } from '../../components/typing-indicator';
 import { signalManager } from '../../crypto/signal-manager';
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { MediaAsset } from '../../models/media-asset.interface';
+import { PendingMessage } from '../../models/message-state.interface';
 import { UploadProgress } from '../../models/upload-progress.interface';
 import { keysService } from '../../services/keys.service';
 import { mediaService } from '../../services/media.service';
@@ -19,6 +21,11 @@ import { useAuthStore } from '../../stores/auth.store';
 import { useChatStore } from '../../stores/chat.store';
 import { useMessageStore } from '../../stores/message.store';
 import { usePresenceStore } from '../../stores/presence.store';
+
+interface DisplayMessage extends Message {
+  status?: MessageStatus;
+  clientMessageId?: string;
+}
 
 export default function ChatRoomScreen() {
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
@@ -31,17 +38,32 @@ export default function ChatRoomScreen() {
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const getChatMemberIds = useChatStore((state) => state.getChatMemberIds);
 
-  const { messagesByChat, hasMore, fetchMessages, sendMessage } = useMessageStore();
+  const { messagesByChat, hasMore, pendingMessages, fetchMessages, sendMessage, retrySendMessage } =
+    useMessageStore();
 
   const typingUsers = usePresenceStore((state) => state.typingUsers[chatId ?? ''] ?? []);
 
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
 
-  const messages = useMemo(
-    () => (chatId ? (messagesByChat[chatId] ?? []) : []),
-    [chatId, messagesByChat],
-  );
+  const messages = useMemo((): DisplayMessage[] => {
+    if (!chatId) return [];
+
+    const serverMessages: DisplayMessage[] = messagesByChat[chatId] ?? [];
+    const chatPending: DisplayMessage[] = pendingMessages
+      .filter((pending: PendingMessage) => pending.chatId === chatId)
+      .map((pending: PendingMessage) => ({
+        ...pending,
+        status: pending.status,
+        clientMessageId: pending.clientMessageId,
+      }));
+
+    const serverIds = new Set(serverMessages.map((message) => message.id));
+    const uniquePending = chatPending.filter((pending) => !serverIds.has(pending.id));
+
+    return [...uniquePending, ...serverMessages];
+  }, [chatId, messagesByChat, pendingMessages]);
+
   const canLoadMore = chatId ? (hasMore[chatId] ?? true) : false;
 
   useEffect(() => {
@@ -136,11 +158,27 @@ export default function ChatRoomScreen() {
     [chatId, sendMessage, getChatMemberIds],
   );
 
+  const handleRetry = useCallback(
+    (clientMessageId: string) => {
+      void retrySendMessage(clientMessageId);
+    },
+    [retrySendMessage],
+  );
+
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => (
-      <MessageBubble message={item} isOwnMessage={item.senderId === currentUser?.id} />
+    ({ item }: { item: DisplayMessage }) => (
+      <MessageBubble
+        message={item}
+        isOwnMessage={item.senderId === currentUser?.id}
+        status={item.status}
+        onRetry={
+          item.status === MessageStatus.FAILED && item.clientMessageId !== undefined
+            ? () => handleRetry(item.clientMessageId!)
+            : undefined
+        }
+      />
     ),
-    [currentUser?.id],
+    [currentUser?.id, handleRetry],
   );
 
   return (

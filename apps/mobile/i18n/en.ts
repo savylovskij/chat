@@ -131,6 +131,20 @@ export default {
   'common.today': 'Today',
   'common.yesterday': 'Yesterday',
 
+  // Message status
+  'message.retry': 'Retry',
+  'message.sending': 'Sending...',
+  'message.failed': 'Failed to send',
+
+  // Network
+  'network.connected': 'Connected',
+  'network.disconnected': 'No internet connection',
+
+  // Error boundary
+  'error.boundary.title': 'Something went wrong',
+  'error.boundary.message': 'An unexpected error occurred. Please try again.',
+  'error.boundary.retry': 'Try Again',
+
   // Errors (mapped from backend error codes)
   'errors.AUTH_INVALID_CREDENTIALS': 'Invalid phone number or code',
   'errors.AUTH_2FA_REQUIRED': '2FA code required',

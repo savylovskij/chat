@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import { memo } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { AvatarProps } from '../models/avatar-props.interface';
@@ -7,11 +8,13 @@ import { AvatarProps } from '../models/avatar-props.interface';
 export const Avatar = memo(function Avatar({ uri, name, size }: AvatarProps) {
   const colors = useThemeColors();
 
-  if (uri !== undefined && uri !== '') {
+  if (uri !== undefined && uri !== null && uri !== '') {
     return (
       <Image
-        source={{ uri }}
+        source={uri}
         style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]}
+        contentFit="cover"
+        cachePolicy="memory-disk"
       />
     );
   }
@@ -40,9 +43,7 @@ export const Avatar = memo(function Avatar({ uri, name, size }: AvatarProps) {
 });
 
 const styles = StyleSheet.create({
-  image: {
-    resizeMode: 'cover',
-  },
+  image: {},
   placeholder: {
     alignItems: 'center',
     justifyContent: 'center',
