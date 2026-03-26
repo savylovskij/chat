@@ -83,12 +83,20 @@ export default function ChatListScreen() {
         }
       />
 
-      <Pressable
-        style={[styles.fab, { backgroundColor: colors.accent }]}
-        onPress={() => router.push('/chats/new')}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </Pressable>
+      <View style={styles.fabGroup}>
+        <Pressable
+          style={[styles.fabSmall, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => router.push('/chats/contacts')}
+        >
+          <Text style={[styles.fabSmallText, { color: colors.textPrimary }]}>{'\u{1F465}'}</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.fab, { backgroundColor: colors.accent }]}
+          onPress={() => router.push('/chats/new')}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -120,10 +128,30 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
   },
-  fab: {
+  fabGroup: {
     position: 'absolute',
     right: 20,
     bottom: 30,
+    alignItems: 'center',
+    gap: 12,
+  },
+  fabSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  fabSmallText: {
+    fontSize: 20,
+  },
+  fab: {
     width: 56,
     height: 56,
     borderRadius: 28,

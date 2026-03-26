@@ -29,6 +29,12 @@ export class DeviceEntity {
   @Column({ name: 'refresh_token_hash', type: 'varchar', length: 255, nullable: true })
   refreshTokenHash!: string | null;
 
+  @Column({ name: 'ip_address', type: 'varchar', length: 45, nullable: true })
+  ipAddress!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  location!: string | null;
+
   @Column({ name: 'last_active_at', type: 'timestamptz', default: () => 'NOW()' })
   lastActiveAt!: Date;
 

@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,6 +19,7 @@ import { useAuthStore } from '../../stores/auth.store';
 export default function SecurityScreen() {
   const { t } = useTranslation();
   const colors = useThemeColors();
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const [totpEnabled, setTotpEnabled] = useState(user?.totpEnabled ?? false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -177,6 +179,18 @@ export default function SecurityScreen() {
           </Text>
         </View>
       </View>
+
+      <Pressable
+        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={() => router.push('/chats/devices')}
+      >
+        <View style={styles.row}>
+          <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>
+            {t('settings.devices')}
+          </Text>
+          <Text style={[styles.phoneValue, { color: colors.textSecondary }]}>{'\u203A'}</Text>
+        </View>
+      </Pressable>
     </ScrollView>
   );
 }

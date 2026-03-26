@@ -93,6 +93,7 @@ export default {
   // Contacts
   'contacts.title': 'Contacts',
   'contacts.noResults': 'No users found',
+  'contacts.searchHint': 'Search by name to find contacts',
 
   // Settings
   'settings.title': 'Settings',

@@ -11,10 +11,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ReplenishPreKeysDto, UploadKeysDto } from '@shared/core';
+import { ReplenishPreKeysDto, UploadKeysDto, WsEvents } from '@shared/core';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ChatGateway } from '../gateway/chat.gateway';
 
 import { KeysService } from './keys.service';
 
@@ -22,7 +23,10 @@ import { KeysService } from './keys.service';
 @Controller('keys')
 @UseGuards(JwtAuthGuard)
 export class KeysController {
-  constructor(private readonly keysService: KeysService) {}
+  constructor(
+    private readonly keysService: KeysService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Post('upload')
   @HttpCode(HttpStatus.CREATED)
@@ -66,6 +70,14 @@ export class KeysController {
     @Query('deviceId') deviceId?: string,
   ) {
     const result = await this.keysService.getKeysForUser(userId, deviceId);
+
+    const status = await this.keysService.checkAndNotifyLowPreKeys(userId, deviceId);
+    if (status.needsReplenishment) {
+      this.chatGateway.emitToUser(userId, WsEvents.KEYS_LOW, {
+        availablePreKeys: status.availablePreKeys,
+      });
+    }
+
     return {
       data: result,
     };

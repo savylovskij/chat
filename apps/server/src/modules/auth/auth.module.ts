@@ -8,6 +8,7 @@ import { UserEntity } from '../users/entities/user.entity';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { SmsService } from './sms.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { TwoFactorService } from './two-factor.service';
 
@@ -18,7 +19,7 @@ import { TwoFactorService } from './two-factor.service';
     JwtModule.register({}),
   ],
   controllers: [AuthController],
-  providers: [AuthService, TwoFactorService, JwtStrategy],
+  providers: [AuthService, SmsService, TwoFactorService, JwtStrategy],
   exports: [JwtModule, PassportModule],
 })
 export class AuthModule {}

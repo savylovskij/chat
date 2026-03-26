@@ -23,5 +23,6 @@ export enum WsEvents {
   CHAT_UPDATED = 'chat:updated',
   MEMBER_ADDED = 'member:added',
   MEMBER_REMOVED = 'member:removed',
+  KEYS_LOW = 'keys:low',
   ERROR = 'error',
 }

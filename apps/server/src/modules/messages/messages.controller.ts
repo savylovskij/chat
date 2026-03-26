@@ -50,6 +50,28 @@ export class MessagesController {
     };
   }
 
+  @Get('media')
+  @ApiOperation({ summary: 'Get shared media for a chat' })
+  async getMedia(
+    @CurrentUser() user: { userId: string },
+    @Param('chatId', ParseUUIDPipe) chatId: string,
+    @Query('type') type?: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.messagesService.getMedia(
+      chatId,
+      user.userId,
+      type,
+      cursor,
+      limit !== undefined ? Number(limit) : 50,
+    );
+    return {
+      data: result.messages,
+      meta: result.meta,
+    };
+  }
+
   @Get(':messageId')
   @ApiOperation({ summary: 'Get message by ID' })
   async getMessageById(

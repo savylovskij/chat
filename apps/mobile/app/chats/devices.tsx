@@ -1,8 +1,10 @@
 import { format } from 'date-fns';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { BlurHeader } from '../../components/blur-header';
 import { useThemeColors } from '../../hooks/use-theme-colors';
 import { apiClient } from '../../services/api-client';
 
@@ -16,9 +18,10 @@ interface Device {
   createdAt: string;
 }
 
-export default function DevicesScreen() {
+export default function DevicesInChatScreen() {
   const { t } = useTranslation();
   const colors = useThemeColors();
+  const router = useRouter();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +83,6 @@ export default function DevicesScreen() {
   const platformIcon = (platform: string): string => {
     switch (platform.toLowerCase()) {
       case 'ios':
-        return '\u{1F4F1}';
       case 'android':
         return '\u{1F4F1}';
       case 'macos':
@@ -94,87 +96,85 @@ export default function DevicesScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <BlurHeader title={t('settings.devices')} onBack={() => router.back()} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-    >
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        {t('settings.devices')}
-      </Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <BlurHeader title={t('settings.devices')} onBack={() => router.back()} />
 
-      {devices.map((device, index) => {
-        const isCurrentDevice = index === 0;
+      <ScrollView contentContainerStyle={styles.content}>
+        {devices.map((device, index) => {
+          const isCurrentDevice = index === 0;
 
-        return (
-          <View
-            key={device.id}
-            style={[
-              styles.deviceCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.deviceHeader}>
-              <Text style={styles.deviceIcon}>{platformIcon(device.platform)}</Text>
-              <View style={styles.deviceInfo}>
-                <View style={styles.deviceNameRow}>
-                  <Text style={[styles.deviceName, { color: colors.textPrimary }]}>
-                    {device.deviceName}
+          return (
+            <View
+              key={device.id}
+              style={[
+                styles.deviceCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.deviceHeader}>
+                <Text style={styles.deviceIcon}>{platformIcon(device.platform)}</Text>
+                <View style={styles.deviceInfo}>
+                  <View style={styles.deviceNameRow}>
+                    <Text style={[styles.deviceName, { color: colors.textPrimary }]}>
+                      {device.deviceName}
+                    </Text>
+                    {isCurrentDevice && (
+                      <View style={[styles.currentBadge, { backgroundColor: colors.accent }]}>
+                        <Text style={styles.currentBadgeText}>{t('settings.thisDevice')}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.devicePlatform, { color: colors.textSecondary }]}>
+                    {device.platform}
                   </Text>
-                  {isCurrentDevice && (
-                    <View style={[styles.currentBadge, { backgroundColor: colors.accent }]}>
-                      <Text style={styles.currentBadgeText}>{t('settings.thisDevice')}</Text>
-                    </View>
+                  {device.ipAddress !== null && (
+                    <Text style={[styles.deviceDetail, { color: colors.textSecondary }]}>
+                      IP: {device.ipAddress}
+                    </Text>
                   )}
+                  {device.location !== null && (
+                    <Text style={[styles.deviceDetail, { color: colors.textSecondary }]}>
+                      {device.location}
+                    </Text>
+                  )}
+                  <Text style={[styles.deviceLastActive, { color: colors.textSecondary }]}>
+                    {t('settings.lastActive')}:{' '}
+                    {format(new Date(device.lastActiveAt), 'dd.MM.yyyy HH:mm')}
+                  </Text>
                 </View>
-                <Text style={[styles.devicePlatform, { color: colors.textSecondary }]}>
-                  {device.platform}
-                </Text>
-                {device.ipAddress !== null && (
-                  <Text style={[styles.deviceDetail, { color: colors.textSecondary }]}>
-                    IP: {device.ipAddress}
-                  </Text>
-                )}
-                {device.location !== null && (
-                  <Text style={[styles.deviceDetail, { color: colors.textSecondary }]}>
-                    {device.location}
-                  </Text>
-                )}
-                <Text style={[styles.deviceLastActive, { color: colors.textSecondary }]}>
-                  {t('settings.lastActive')}:{' '}
-                  {format(new Date(device.lastActiveAt), 'dd.MM.yyyy HH:mm')}
-                </Text>
               </View>
+
+              {!isCurrentDevice && (
+                <Pressable
+                  style={[styles.terminateButton, { borderColor: colors.danger }]}
+                  onPress={() => handleTerminate(device.id, device.deviceName)}
+                >
+                  <Text style={[styles.terminateText, { color: colors.danger }]}>
+                    {t('settings.terminate')}
+                  </Text>
+                </Pressable>
+              )}
             </View>
+          );
+        })}
 
-            {!isCurrentDevice && (
-              <Pressable
-                style={[styles.terminateButton, { borderColor: colors.danger }]}
-                onPress={() => handleTerminate(device.id, device.deviceName)}
-              >
-                <Text style={[styles.terminateText, { color: colors.danger }]}>
-                  {t('settings.terminate')}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        );
-      })}
-
-      {devices.length > 1 && (
-        <Pressable
-          style={[styles.terminateAllButton, { backgroundColor: colors.danger }]}
-          onPress={handleTerminateAll}
-        >
-          <Text style={styles.terminateAllText}>{t('settings.terminateAllOther')}</Text>
-        </Pressable>
-      )}
-    </ScrollView>
+        {devices.length > 1 && (
+          <Pressable
+            style={[styles.terminateAllButton, { backgroundColor: colors.danger }]}
+            onPress={handleTerminateAll}
+          >
+            <Text style={styles.terminateAllText}>{t('settings.terminateAllOther')}</Text>
+          </Pressable>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -189,13 +189,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     fontSize: 16,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 12,
-    letterSpacing: 0.5,
   },
   deviceCard: {
     borderRadius: 14,

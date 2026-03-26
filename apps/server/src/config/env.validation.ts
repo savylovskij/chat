@@ -35,6 +35,10 @@ const envSchema = Joi.object({
   S3_SECRET_ACCESS_KEY: Joi.string().required(),
   S3_BUCKET: Joi.string().required(),
 
+  TWILIO_ACCOUNT_SID: Joi.string().optional().allow(''),
+  TWILIO_AUTH_TOKEN: Joi.string().optional().allow(''),
+  TWILIO_PHONE_NUMBER: Joi.string().optional().allow(''),
+
   FIREBASE_PROJECT_ID: Joi.string().optional().allow(''),
   FIREBASE_PRIVATE_KEY: Joi.string().optional().allow(''),
   FIREBASE_CLIENT_EMAIL: Joi.string().optional().allow(''),

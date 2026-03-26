@@ -8,6 +8,7 @@ import { useChatStore } from '../stores/chat.store';
 import { useMessageStore } from '../stores/message.store';
 import { usePresenceStore } from '../stores/presence.store';
 
+import { keysService } from './keys.service';
 import { offlineQueueService } from './offline-queue.service';
 
 const WS_URL: string =
@@ -179,6 +180,10 @@ class SocketService {
 
     this.socket?.on(WsEvents.CHAT_UPDATED, (data: { chatId: string; changes: Partial<Chat> }) => {
       chatStore().onChatUpdated(data.chatId, data.changes);
+    });
+
+    this.socket?.on(WsEvents.KEYS_LOW, () => {
+      void keysService.checkAndReplenishPreKeys();
     });
   }
 }

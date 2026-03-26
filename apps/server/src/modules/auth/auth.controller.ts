@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Ip, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { LoginDto, RefreshTokenDto, RegisterDto, Verify2faDto } from '@shared/core';
@@ -38,15 +38,15 @@ export class AuthController {
 
   @Post('verify')
   @ApiOperation({ summary: 'Verify OTP code' })
-  async verify(@Body() dto: VerifyOtpWithTokenDto) {
-    const result = await this.authService.verify(dto.phone, dto.code, dto.tempToken);
+  async verify(@Body() dto: VerifyOtpWithTokenDto, @Ip() ipAddress: string) {
+    const result = await this.authService.verify(dto.phone, dto.code, dto.tempToken, ipAddress);
     return { data: result };
   }
 
   @Post('refresh')
   @ApiOperation({ summary: 'Refresh JWT tokens' })
-  async refresh(@Body() dto: RefreshTokenDto) {
-    const result = await this.authService.refresh(dto.refreshToken);
+  async refresh(@Body() dto: RefreshTokenDto, @Ip() ipAddress: string) {
+    const result = await this.authService.refresh(dto.refreshToken, ipAddress);
     return { data: result };
   }
 
@@ -76,8 +76,8 @@ export class AuthController {
 
   @Post('2fa/verify')
   @ApiOperation({ summary: 'Verify 2FA code during login' })
-  async verify2fa(@Body() dto: Verify2faWithTokenDto) {
-    const result = await this.authService.verify2fa(dto.tempToken, dto.code);
+  async verify2fa(@Body() dto: Verify2faWithTokenDto, @Ip() ipAddress: string) {
+    const result = await this.authService.verify2fa(dto.tempToken, dto.code, ipAddress);
     return { data: result };
   }
 

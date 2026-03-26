@@ -83,6 +83,56 @@ export class MessagesService {
     };
   }
 
+  async getMedia(
+    chatId: string,
+    userId: string,
+    type?: string,
+    cursor?: string,
+    limit: number = 50,
+  ) {
+    await this.assertMembership(chatId, userId);
+
+    const mediaTypes = ['image', 'video', 'file', 'voice'];
+    const filterTypes =
+      type !== undefined && type !== '' && mediaTypes.includes(type) ? [type] : mediaTypes;
+
+    const queryBuilder = this.messageRepository
+      .createQueryBuilder('message')
+      .where('message.chat_id = :chatId', { chatId })
+      .andWhere('message.type IN (:...filterTypes)', { filterTypes })
+      .andWhere('message.deleted_at IS NULL')
+      .andWhere('message.media_url IS NOT NULL')
+      .leftJoin(
+        'message_deletions',
+        'deletion',
+        'deletion.message_id = message.id AND deletion.user_id = :userId',
+        { userId },
+      )
+      .andWhere('deletion.id IS NULL')
+      .orderBy('message.created_at', 'DESC')
+      .take(limit);
+
+    if (cursor !== undefined && cursor !== '') {
+      const cursorMessage = await this.messageRepository.findOne({ where: { id: cursor } });
+
+      if (cursorMessage) {
+        queryBuilder.andWhere('message.created_at < :cursorDate', {
+          cursorDate: cursorMessage.createdAt,
+        });
+      }
+    }
+
+    const messages = await queryBuilder.getMany();
+
+    return {
+      messages: messages.map((message) => this.toMessageResponse(message)),
+      meta: {
+        cursor: messages.length > 0 ? messages[messages.length - 1].id : null,
+        hasMore: messages.length === limit,
+      },
+    };
+  }
+
   async getMessageById(chatId: string, messageId: string, userId: string) {
     await this.assertMembership(chatId, userId);
 

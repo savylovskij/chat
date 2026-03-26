@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { SignalPrekeyEntity } from '../users/entities/signal-prekey.entity';
 import { UserEntity } from '../users/entities/user.entity';
 
+const PREKEY_LOW_THRESHOLD = 10;
+
 @Injectable()
 export class KeysService {
+  private readonly logger = new Logger(KeysService.name);
+
   constructor(
     @InjectRepository(SignalPrekeyEntity)
     private readonly prekeyRepository: Repository<SignalPrekeyEntity>,
@@ -129,7 +133,37 @@ export class KeysService {
       };
     }
 
+    if (oneTimePreKey) {
+      void this.checkAndNotifyLowPreKeys(userId, deviceId);
+    }
+
     return result;
+  }
+
+  async checkAndNotifyLowPreKeys(
+    userId: string,
+    deviceId?: string,
+  ): Promise<{ needsReplenishment: boolean; availablePreKeys: number }> {
+    const where: Record<string, unknown> = {
+      userId,
+      isSigned: false,
+      isUsed: false,
+    };
+
+    if (deviceId !== undefined && deviceId !== '') {
+      where.deviceId = deviceId;
+    }
+
+    const availablePreKeys = await this.prekeyRepository.count({ where });
+    const needsReplenishment = availablePreKeys < PREKEY_LOW_THRESHOLD;
+
+    if (needsReplenishment) {
+      this.logger.warn(
+        `User ${userId} has only ${availablePreKeys} prekeys remaining (threshold: ${PREKEY_LOW_THRESHOLD})`,
+      );
+    }
+
+    return { needsReplenishment, availablePreKeys };
   }
 
   async replenishPreKeys(

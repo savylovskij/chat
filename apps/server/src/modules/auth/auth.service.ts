@@ -5,7 +5,6 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
-  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -19,6 +18,7 @@ import { RedisService } from '../redis/redis.service';
 import { DeviceEntity } from '../users/entities/device.entity';
 import { UserEntity } from '../users/entities/user.entity';
 
+import { SmsService } from './sms.service';
 import { TwoFactorService } from './two-factor.service';
 
 interface OtpData {
@@ -35,8 +35,6 @@ interface TwoFaData {
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
@@ -45,6 +43,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
     private readonly twoFactorService: TwoFactorService,
+    private readonly smsService: SmsService,
   ) {}
 
   async register(phone: string, displayName: string) {
@@ -115,12 +114,12 @@ export class AuthService {
     await this.redisService.set(`temp:${tempToken}`, phone, 300);
     await this.redisService.set(`login:${phone}`, tempToken, 300);
 
-    this.logger.log(`[DEV] OTP for ${phone}: ${otp}`);
+    await this.smsService.sendOtp(phone, otp);
 
     return { tempToken };
   }
 
-  async verify(phone: string, code: string, tempToken: string) {
+  async verify(phone: string, code: string, tempToken: string, ipAddress?: string) {
     const storedPhone = await this.redisService.get(`temp:${tempToken}`);
     if (storedPhone === null || storedPhone !== phone) {
       throw new UnauthorizedException('Invalid or expired temp token');
@@ -181,6 +180,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, device.id);
     device.refreshTokenHash = this.hashToken(tokens.refreshToken);
     device.lastActiveAt = new Date();
+    device.ipAddress = ipAddress ?? null;
     await this.deviceRepository.save(device);
 
     user.phoneVerified = true;
@@ -193,7 +193,7 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken: string) {
+  async refresh(refreshToken: string, ipAddress?: string) {
     const hash = this.hashToken(refreshToken);
 
     const device = await this.deviceRepository.findOne({
@@ -208,6 +208,7 @@ export class AuthService {
     const tokens = await this.generateTokens(device.userId, device.id);
     device.refreshTokenHash = this.hashToken(tokens.refreshToken);
     device.lastActiveAt = new Date();
+    device.ipAddress = ipAddress ?? device.ipAddress;
     await this.deviceRepository.save(device);
 
     return {
@@ -227,7 +228,7 @@ export class AuthService {
     }
   }
 
-  async verify2fa(tempToken: string, code: string) {
+  async verify2fa(tempToken: string, code: string, ipAddress?: string) {
     const data = await this.redisService.get(`2fa:${tempToken}`);
     if (data === null) {
       throw new UnauthorizedException('Invalid or expired 2FA temp token');
@@ -267,6 +268,7 @@ export class AuthService {
     const tokens = await this.generateTokens(parsed.userId, device.id);
     device.refreshTokenHash = this.hashToken(tokens.refreshToken);
     device.lastActiveAt = new Date();
+    device.ipAddress = ipAddress ?? null;
     await this.deviceRepository.save(device);
 
     return {
