@@ -9,6 +9,8 @@
     "format:check": "prettier --check 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.ts'",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "server:dev": "pnpm --filter server start:dev",
+    "mobile:ios": "pnpm --filter mobile ios",
     "prepare": "husky"
   },
   "lint-staged": {
