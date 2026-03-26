@@ -8,6 +8,7 @@ import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { MessageBubbleProps } from '../models/message-bubble-props.interface';
+import { formatFileSize } from '../utils/format-file-size';
 
 import { ImageViewer } from './image-viewer';
 import { VideoPlayer } from './video-player';
@@ -165,18 +166,6 @@ export const MessageBubble = memo(function MessageBubble({
     </View>
   );
 });
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 const styles = StyleSheet.create({
   container: {

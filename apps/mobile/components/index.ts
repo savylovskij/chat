@@ -1,7 +1,9 @@
 export { Avatar } from './avatar';
+export { DownloadProgress } from './download-progress';
 export { ChatListItem } from './chat-list-item';
 export { ImageViewer } from './image-viewer';
 export { MediaPicker } from './media-picker';
+export { MediaPlaceholder } from './media-placeholder';
 export { MessageBubble } from './message-bubble';
 export { MessageInput } from './message-input';
 export { ReactionBadge } from './reaction-badge';
