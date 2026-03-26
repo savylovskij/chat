@@ -18,6 +18,8 @@ export const MessageInput = memo(function MessageInput({
   chatId,
   uploadProgress,
   uploadFileName,
+  replyToMessage,
+  onCancelReply,
 }: MessageInputProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
@@ -79,6 +81,26 @@ export const MessageInput = memo(function MessageInput({
   const hasText = text.trim().length > 0;
   const isUploading = uploadProgress !== null;
 
+  const replyPreview =
+    replyToMessage !== null ? (
+      <View
+        style={[
+          styles.replyPreview,
+          { backgroundColor: colors.surface, borderLeftColor: colors.accent },
+        ]}
+      >
+        <View style={styles.replyContent}>
+          <Text style={[styles.replyLabel, { color: colors.accent }]}>{t('menu.reply')}</Text>
+          <Text style={[styles.replyText, { color: colors.textSecondary }]} numberOfLines={1}>
+            {replyToMessage.encryptedContent ?? t('chat.photo')}
+          </Text>
+        </View>
+        <Pressable style={styles.replyCancelButton} onPress={onCancelReply}>
+          <Text style={[styles.replyCancelIcon, { color: colors.textSecondary }]}>{'\u2715'}</Text>
+        </Pressable>
+      </View>
+    ) : null;
+
   const inputContent = (
     <>
       <Pressable style={styles.attachButton} onPress={() => setPickerVisible(true)}>
@@ -116,6 +138,8 @@ export const MessageInput = memo(function MessageInput({
       {isUploading && uploadFileName !== null && (
         <UploadProgress percentage={uploadProgress} fileName={uploadFileName} />
       )}
+
+      {replyPreview}
 
       {Platform.OS === 'ios' ? (
         <BlurView
@@ -185,5 +209,35 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
+  },
+  replyPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderLeftWidth: 3,
+    marginHorizontal: 8,
+    marginTop: 4,
+    borderRadius: 8,
+  },
+  replyContent: {
+    flex: 1,
+  },
+  replyLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  replyText: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  replyCancelButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  replyCancelIcon: {
+    fontSize: 14,
   },
 });

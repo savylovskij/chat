@@ -1,3 +1,5 @@
+import { Message } from '@shared/types/message.interface';
+
 import { MediaAsset } from './media-asset.interface';
 
 export interface MessageInputProps {
@@ -6,4 +8,6 @@ export interface MessageInputProps {
   chatId: string;
   uploadProgress: number | null;
   uploadFileName: string | null;
+  replyToMessage: Message | null;
+  onCancelReply: () => void;
 }

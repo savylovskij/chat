@@ -133,6 +133,7 @@ export const useMessageStore = create<MessageState>((set, get) => {
     messagesByChat: {},
     hasMore: {},
     pendingMessages: [],
+    reactionsByMessage: {},
 
     fetchMessages: async (chatId: string, cursor?: string) => {
       const params: Record<string, string> | undefined =
@@ -299,11 +300,42 @@ export const useMessageStore = create<MessageState>((set, get) => {
     },
 
     addReaction: async (messageId: string, emoji: string) => {
+      const userId = useAuthStore.getState().user?.id ?? '';
+      const reaction: import('@shared/types/message-reaction.interface').MessageReaction = {
+        id: crypto.randomUUID(),
+        messageId,
+        userId,
+        emoji,
+        createdAt: new Date().toISOString(),
+      };
+
+      set((state) => ({
+        reactionsByMessage: {
+          ...state.reactionsByMessage,
+          [messageId]: [...(state.reactionsByMessage[messageId] ?? []), reaction],
+        },
+      }));
+
       await apiClient.post(`/messages/${messageId}/reactions`, { emoji });
     },
 
     removeReaction: async (messageId: string, emoji: string) => {
+      const userId = useAuthStore.getState().user?.id ?? '';
+
+      set((state) => ({
+        reactionsByMessage: {
+          ...state.reactionsByMessage,
+          [messageId]: (state.reactionsByMessage[messageId] ?? []).filter(
+            (reaction) => !(reaction.userId === userId && reaction.emoji === emoji),
+          ),
+        },
+      }));
+
       await apiClient.delete(`/messages/${messageId}/reactions/${emoji}`);
+    },
+
+    getReactions: (messageId: string) => {
+      return get().reactionsByMessage[messageId] ?? [];
     },
 
     removePendingMessage: (clientMessageId: string) => {
@@ -388,12 +420,39 @@ export const useMessageStore = create<MessageState>((set, get) => {
       });
     },
 
-    onReactionAdded: (_messageId: string, _userId: string, _emoji: string) => {
-      // Reactions are managed at the message level; refresh from server or update locally
+    onReactionAdded: (messageId: string, userId: string, emoji: string) => {
+      const existing = get().reactionsByMessage[messageId] ?? [];
+      const alreadyExists = existing.some(
+        (reaction) => reaction.userId === userId && reaction.emoji === emoji,
+      );
+
+      if (alreadyExists) return;
+
+      const reaction: import('@shared/types/message-reaction.interface').MessageReaction = {
+        id: crypto.randomUUID(),
+        messageId,
+        userId,
+        emoji,
+        createdAt: new Date().toISOString(),
+      };
+
+      set((state) => ({
+        reactionsByMessage: {
+          ...state.reactionsByMessage,
+          [messageId]: [...(state.reactionsByMessage[messageId] ?? []), reaction],
+        },
+      }));
     },
 
-    onReactionRemoved: (_messageId: string, _userId: string, _emoji: string) => {
-      // Reactions are managed at the message level; refresh from server or update locally
+    onReactionRemoved: (messageId: string, userId: string, emoji: string) => {
+      set((state) => ({
+        reactionsByMessage: {
+          ...state.reactionsByMessage,
+          [messageId]: (state.reactionsByMessage[messageId] ?? []).filter(
+            (reaction) => !(reaction.userId === userId && reaction.emoji === emoji),
+          ),
+        },
+      }));
     },
   };
 });

@@ -4,15 +4,16 @@ import { format } from 'date-fns';
 import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useThemeColors } from '../hooks/use-theme-colors';
 import { MessageBubbleProps } from '../models/message-bubble-props.interface';
 import { formatFileSize } from '../utils/format-file-size';
 
 import { ImageViewer } from './image-viewer';
+import { ReactionBadge } from './reaction-badge';
 import { VideoPlayer } from './video-player';
 import { VoicePlayer } from './voice-player';
 
@@ -39,12 +40,16 @@ export const MessageBubble = memo(function MessageBubble({
   message,
   isOwnMessage,
   status,
+  reactions,
   onRetry,
+  onLongPress,
+  onReactionPress,
 }: MessageBubbleProps) {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [videoPlayerVisible, setVideoPlayerVisible] = useState(false);
+  const bubbleRef = useRef<View>(null);
 
   const handleFileDownload = useCallback(async () => {
     if (message.mediaUrl === null || message.mediaUrl === '') return;
@@ -65,6 +70,14 @@ export const MessageBubble = memo(function MessageBubble({
       onRetry();
     }
   }, [onRetry]);
+
+  const handleLongPress = useCallback(
+    (event: GestureResponderEvent) => {
+      const { pageX, pageY } = event.nativeEvent;
+      onLongPress({ x: pageX, y: pageY });
+    },
+    [onLongPress],
+  );
 
   if (message.deletedAt !== null) {
     return (
@@ -187,19 +200,26 @@ export const MessageBubble = memo(function MessageBubble({
 
   return (
     <View style={[styles.container, isOwnMessage ? styles.ownContainer : styles.otherContainer]}>
-      <View style={[styles.bubble, { backgroundColor: bubbleColor, opacity: bubbleOpacity }]}>
-        {renderContent()}
+      <Pressable onLongPress={handleLongPress} delayLongPress={300}>
+        <View
+          ref={bubbleRef}
+          style={[styles.bubble, { backgroundColor: bubbleColor, opacity: bubbleOpacity }]}
+        >
+          {renderContent()}
 
-        <View style={styles.metaRow}>
-          {message.isEdited && (
-            <Text style={[styles.editedLabel, { color: colors.textSecondary }]}>edited</Text>
-          )}
-          <Text style={[styles.time, { color: colors.textSecondary }]}>{time}</Text>
-          {isOwnMessage && status !== undefined && (
-            <MessageStatusIcon status={status} color={colors.textSecondary} />
-          )}
+          <View style={styles.metaRow}>
+            {message.isEdited && (
+              <Text style={[styles.editedLabel, { color: colors.textSecondary }]}>edited</Text>
+            )}
+            <Text style={[styles.time, { color: colors.textSecondary }]}>{time}</Text>
+            {isOwnMessage && status !== undefined && (
+              <MessageStatusIcon status={status} color={colors.textSecondary} />
+            )}
+          </View>
         </View>
-      </View>
+      </Pressable>
+
+      {reactions.length > 0 && <ReactionBadge reactions={reactions} onPress={onReactionPress} />}
 
       {isFailed && onRetry !== undefined && (
         <Pressable onPress={handleRetry} style={styles.retryButton}>

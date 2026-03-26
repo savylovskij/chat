@@ -1,14 +1,19 @@
+import { DeleteMessageMode } from '@shared/enums/delete-message-mode.enum';
 import { MessageStatus } from '@shared/enums/message-status.enum';
 import { MessageType } from '@shared/enums/message-type.enum';
 import { MediaMetadata } from '@shared/types/media-metadata.interface';
+import { MessageReaction } from '@shared/types/message-reaction.interface';
 import { Message } from '@shared/types/message.interface';
 import { FlashList } from '@shopify/flash-list';
+import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text } from 'react-native';
 
 import { BlurHeader } from '../../components/blur-header';
+import { ConfettiExplosion } from '../../components/confetti-explosion';
 import { MessageBubble } from '../../components/message-bubble';
+import { MessageContextMenu } from '../../components/message-context-menu';
 import { MessageInput } from '../../components/message-input';
 import { ProfileModal } from '../../components/profile-modal';
 import { TypingIndicator } from '../../components/typing-indicator';
@@ -30,6 +35,8 @@ interface DisplayMessage extends Message {
   clientMessageId?: string;
 }
 
+const COMBO_THRESHOLD = 3;
+
 export default function ChatRoomScreen() {
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
   const colors = useThemeColors();
@@ -43,14 +50,31 @@ export default function ChatRoomScreen() {
   const setActiveChat = useChatStore((state) => state.setActiveChat);
   const getChatMemberIds = useChatStore((state) => state.getChatMemberIds);
 
-  const { messagesByChat, hasMore, pendingMessages, fetchMessages, sendMessage, retrySendMessage } =
-    useMessageStore();
+  const {
+    messagesByChat,
+    hasMore,
+    pendingMessages,
+    reactionsByMessage,
+    fetchMessages,
+    sendMessage,
+    retrySendMessage,
+    editMessage,
+    deleteMessage,
+    addReaction,
+    removeReaction,
+  } = useMessageStore();
 
   const typingUsers = usePresenceStore((state) => state.typingUsers[chatId ?? ''] ?? []);
 
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const [mobileProfileVisible, setMobileProfileVisible] = useState(false);
+
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<DisplayMessage | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [confettiOrigin, setConfettiOrigin] = useState<{ x: number; y: number } | null>(null);
 
   const messages = useMemo((): DisplayMessage[] => {
     if (!chatId) return [];
@@ -99,6 +123,7 @@ export default function ChatRoomScreen() {
       if (!chatId) return;
 
       void sendMessage(chatId, text, MessageType.TEXT);
+      setReplyToMessage(null);
     },
     [chatId, sendMessage],
   );
@@ -175,6 +200,110 @@ export default function ChatRoomScreen() {
     }
   }, [isMobile, router]);
 
+  const handleLongPress = useCallback(
+    (message: DisplayMessage, position: { x: number; y: number }) => {
+      setSelectedMessage(message);
+      setMenuAnchor(position);
+      setContextMenuVisible(true);
+    },
+    [],
+  );
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenuVisible(false);
+    setSelectedMessage(null);
+  }, []);
+
+  const handleReaction = useCallback(
+    (emoji: string) => {
+      if (selectedMessage === null) return;
+
+      const messageReactions = reactionsByMessage[selectedMessage.id] ?? [];
+      const existingReaction = messageReactions.find(
+        (reaction) => reaction.userId === currentUser?.id && reaction.emoji === emoji,
+      );
+
+      if (existingReaction !== undefined) {
+        void removeReaction(selectedMessage.id, emoji);
+      } else {
+        void addReaction(selectedMessage.id, emoji);
+
+        const updatedReactions = [
+          ...messageReactions,
+          {
+            id: '',
+            messageId: selectedMessage.id,
+            userId: currentUser?.id ?? '',
+            emoji,
+            createdAt: '',
+          },
+        ];
+        const grouped = updatedReactions.reduce<Record<string, number>>((acc, reaction) => {
+          acc[reaction.emoji] = (acc[reaction.emoji] ?? 0) + 1;
+          return acc;
+        }, {});
+        const maxCount = Math.max(0, ...Object.values(grouped));
+
+        if (maxCount >= COMBO_THRESHOLD) {
+          setConfettiOrigin(menuAnchor);
+        }
+      }
+
+      handleCloseContextMenu();
+    },
+    [
+      selectedMessage,
+      reactionsByMessage,
+      currentUser?.id,
+      addReaction,
+      removeReaction,
+      handleCloseContextMenu,
+      menuAnchor,
+    ],
+  );
+
+  const handleReply = useCallback(() => {
+    if (selectedMessage !== null) {
+      setReplyToMessage(selectedMessage);
+    }
+    handleCloseContextMenu();
+  }, [selectedMessage, handleCloseContextMenu]);
+
+  const handleCopy = useCallback(() => {
+    if (
+      selectedMessage?.encryptedContent !== null &&
+      selectedMessage?.encryptedContent !== undefined
+    ) {
+      void Clipboard.setStringAsync(selectedMessage.encryptedContent);
+    }
+    handleCloseContextMenu();
+  }, [selectedMessage, handleCloseContextMenu]);
+
+  const handleEdit = useCallback(() => {
+    if (selectedMessage !== null && selectedMessage.encryptedContent !== null) {
+      void editMessage(selectedMessage.id, selectedMessage.encryptedContent);
+    }
+    handleCloseContextMenu();
+  }, [selectedMessage, editMessage, handleCloseContextMenu]);
+
+  const handleDeleteForMe = useCallback(() => {
+    if (selectedMessage !== null) {
+      void deleteMessage(selectedMessage.id, DeleteMessageMode.FOR_ME);
+    }
+    handleCloseContextMenu();
+  }, [selectedMessage, deleteMessage, handleCloseContextMenu]);
+
+  const handleDeleteForEveryone = useCallback(() => {
+    if (selectedMessage !== null) {
+      void deleteMessage(selectedMessage.id, DeleteMessageMode.FOR_EVERYONE);
+    }
+    handleCloseContextMenu();
+  }, [selectedMessage, deleteMessage, handleCloseContextMenu]);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyToMessage(null);
+  }, []);
+
   const chatTitle = chat?.name ?? '';
 
   const headerLeftContent = useMemo(() => {
@@ -204,20 +333,34 @@ export default function ChatRoomScreen() {
   }, [handleOpenProfile, colors.accent]);
 
   const renderItem = useCallback(
-    ({ item }: { item: DisplayMessage }) => (
-      <MessageBubble
-        message={item}
-        isOwnMessage={item.senderId === currentUser?.id}
-        status={item.status}
-        onRetry={
-          item.status === MessageStatus.FAILED && item.clientMessageId !== undefined
-            ? () => handleRetry(item.clientMessageId!)
-            : undefined
-        }
-      />
-    ),
-    [currentUser?.id, handleRetry],
+    ({ item }: { item: DisplayMessage }) => {
+      const messageReactions: MessageReaction[] = reactionsByMessage[item.id] ?? [];
+
+      return (
+        <MessageBubble
+          message={item}
+          isOwnMessage={item.senderId === currentUser?.id}
+          status={item.status}
+          reactions={messageReactions}
+          onRetry={
+            item.status === MessageStatus.FAILED && item.clientMessageId !== undefined
+              ? () => handleRetry(item.clientMessageId!)
+              : undefined
+          }
+          onLongPress={(position) => handleLongPress(item, position)}
+          onReactionPress={() => {
+            setSelectedMessage(item);
+            setMenuAnchor({ x: 100, y: 300 });
+            setContextMenuVisible(true);
+          }}
+        />
+      );
+    },
+    [currentUser?.id, handleRetry, handleLongPress, reactionsByMessage],
   );
+
+  const selectedReactions =
+    selectedMessage !== null ? (reactionsByMessage[selectedMessage.id] ?? []) : [];
 
   return (
     <KeyboardAvoidingView
@@ -248,13 +391,37 @@ export default function ChatRoomScreen() {
         chatId={chatId ?? ''}
         uploadProgress={uploadProgress}
         uploadFileName={uploadFileName}
+        replyToMessage={replyToMessage}
+        onCancelReply={handleCancelReply}
       />
+
       {isMobile && chatId !== undefined && (
         <ProfileModal
           visible={mobileProfileVisible}
           chatId={chatId}
           onClose={() => setMobileProfileVisible(false)}
         />
+      )}
+
+      {contextMenuVisible && (
+        <MessageContextMenu
+          visible={contextMenuVisible}
+          message={selectedMessage}
+          reactions={selectedReactions}
+          isOwnMessage={selectedMessage?.senderId === currentUser?.id}
+          anchorPosition={menuAnchor}
+          onClose={handleCloseContextMenu}
+          onReaction={handleReaction}
+          onReply={handleReply}
+          onCopy={handleCopy}
+          onEdit={handleEdit}
+          onDeleteForMe={handleDeleteForMe}
+          onDeleteForEveryone={handleDeleteForEveryone}
+        />
+      )}
+
+      {confettiOrigin !== null && (
+        <ConfettiExplosion origin={confettiOrigin} onComplete={() => setConfettiOrigin(null)} />
       )}
     </KeyboardAvoidingView>
   );

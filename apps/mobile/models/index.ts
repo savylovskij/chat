@@ -3,6 +3,7 @@ export type { AutoDownloadOption } from './auto-download-option.type';
 export type { AvatarProps } from './avatar-props.interface';
 export type { BlurHeaderProps } from './blur-header-props.interface';
 export type { ChatSidebarProps } from './chat-sidebar-props.interface';
+export type { ConfettiExplosionProps } from './confetti-explosion-props.interface';
 export type { ChatListItemProps } from './chat-list-item-props.interface';
 export type { ChatsLayoutContextValue } from './chats-layout-context.interface';
 export type { ChatState } from './chat-state.interface';
@@ -22,6 +23,7 @@ export type { MediaPlaceholderProps } from './media-placeholder-props.interface'
 export type { MediaType } from './media-type.type';
 export type { MediaPickerProps } from './media-picker-props.interface';
 export type { MessageBubbleProps } from './message-bubble-props.interface';
+export type { MessageContextMenuProps } from './message-context-menu-props.interface';
 export type { MessageInputProps } from './message-input-props.interface';
 export type { MessageState, PendingMessage } from './message-state.interface';
 export type { NetworkToastProps } from './network-toast-props.interface';
