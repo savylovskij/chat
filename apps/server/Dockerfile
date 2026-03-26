@@ -22,7 +22,7 @@ ENV NODE_ENV=production
 COPY --from=deps /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/package.json ./
 COPY --from=deps /app/apps/server/package.json apps/server/
 COPY --from=deps /app/packages/shared/package.json packages/shared/
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=build /app/packages/shared/dist packages/shared/dist
 COPY --from=build /app/apps/server/dist apps/server/dist
 
